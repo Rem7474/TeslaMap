@@ -279,3 +279,13 @@
   font-size: 13px;
   color: #93c5fd;
 }
+
+/* Embed mode inside Admin Dashboard Widget */
+body.embed-mode .telemetry-sheet,
+body.embed-mode #btn-lang-toggle {
+  display: none !important;
+}
+
+body.embed-mode .recenter-bar-container {
+  bottom: 20px !important;
+}

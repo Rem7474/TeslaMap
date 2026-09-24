@@ -153,6 +153,7 @@
         elTmActiveChip.style.display = 'none';
         elTmActiveChip.innerHTML = '';
       }
+    }
   }
 
   async function loadLinks() {

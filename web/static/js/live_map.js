@@ -320,6 +320,34 @@
         setAutoFollow(false);
       }
     });
+
+    if (token === 'admin') {
+      fetch('/api/admin/zones').then(function(r) { return r.json(); }).then(updateSafeZones).catch(function() {});
+    }
+  }
+
+  let safeZoneLayers = [];
+  function updateSafeZones(zones) {
+    if (!map || !zones) return;
+    safeZoneLayers.forEach(function (l) { map.removeLayer(l); });
+    safeZoneLayers = [];
+    zones.forEach(function (z) {
+      const circle = L.circle([z.latitude, z.longitude], {
+        radius: z.radius_meters,
+        color: '#e82127',
+        fillColor: '#e82127',
+        fillOpacity: 0.15,
+        weight: 1.5,
+        dashArray: '4, 4'
+      }).bindTooltip(escapeHtml(z.name || 'Zone protégée'), { permanent: false, direction: 'top' });
+      circle.addTo(map);
+      safeZoneLayers.push(circle);
+    });
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
   function recenterMap() {
@@ -334,12 +362,34 @@
   }
 
   function connectSSE() {
-    const streamUrl = '/api/stream/' + encodeURIComponent(token);
+    const streamUrl = (token === 'admin') ? '/api/admin/stream' : ('/api/stream/' + encodeURIComponent(token));
     const eventSource = new EventSource(streamUrl);
 
     eventSource.onmessage = function (e) {
       try {
-        const data = JSON.parse(e.data);
+        let data = JSON.parse(e.data);
+        if (token === 'admin' && data.status) {
+          if (data.zones) {
+            updateSafeZones(data.zones);
+          }
+          const st = data.status;
+          data = {
+            state: st.state,
+            latitude: st.latitude,
+            longitude: st.longitude,
+            heading: st.heading,
+            speed: st.speed,
+            battery_level: st.battery_level,
+            in_safe_zone: false,
+            has_active_route: st.has_active_route,
+            destination: (st.route && st.route.destination) || '',
+            distance_left_km: (st.route && st.route.distance_to_arrival_km) || 0,
+            minutes_left: (st.route && Math.round(st.route.minutes_to_arrival)) || 0,
+            progress_pct: (st.route && st.route.initial_distance_km > 0) ? Math.min(100, Math.max(0, Math.round(((st.route.initial_distance_km - st.route.distance_to_arrival_km) / st.route.initial_distance_km) * 100))) : 0,
+            route_coordinates: (st.route && st.route.coordinates) || [],
+            traveled_coordinates: st.traveled_coordinates || []
+          };
+        }
         handleTelemetryUpdate(data);
       } catch (err) {
         console.error("Telemetry parse error", err);

@@ -107,6 +107,7 @@ func (s *Server) handleShareView(w http.ResponseWriter, r *http.Request) {
 		IsExpired          bool
 		IsDefinitelyClosed bool
 		IsPending          bool
+		IsEmbed            bool
 		StartsAt           string
 		TileURL            string
 		Attribution        string
@@ -118,6 +119,7 @@ func (s *Server) handleShareView(w http.ResponseWriter, r *http.Request) {
 		IsExpired:          isExpired,
 		IsDefinitelyClosed: isDefinitelyClosed,
 		IsPending:          isPending,
+		IsEmbed:            false,
 		StartsAt:           startsAtFormatted,
 		TileURL:            tileURL,
 		Attribution:        attribution,
