@@ -20,6 +20,9 @@ type Config struct {
 	SessionSecret   string
 	RoutingProvider string // "osrm", "openrouteservice", "mapbox"
 	RoutingAPIKey   string
+	MapProvider     string // "cartodb", "mapbox", "maptiler", "stadia"
+	MapAPIKey       string
+	MapTileURL      string
 	BaseURL         string
 	SimulationMode  bool
 }
@@ -37,6 +40,9 @@ func Load() *Config {
 		SessionSecret:   getEnv("SESSION_SECRET", ""),
 		RoutingProvider: strings.ToLower(getEnv("ROUTING_PROVIDER", "osrm")),
 		RoutingAPIKey:   os.Getenv("ROUTING_API_KEY"),
+		MapProvider:     strings.ToLower(getEnv("MAP_PROVIDER", "cartodb")),
+		MapAPIKey:       getEnv("MAP_API_KEY", ""),
+		MapTileURL:      os.Getenv("MAP_TILE_URL"),
 		BaseURL:         getEnv("BASE_URL", ""),
 		SimulationMode:  getEnvBool("SIMULATION_MODE", false),
 	}
@@ -47,13 +53,21 @@ func Load() *Config {
 		cfg.SessionSecret = hex.EncodeToString(b)
 	}
 
-	// Auto-detect provider if API key is provided
+	// Auto-detect routing provider if API key is provided
 	if cfg.RoutingAPIKey != "" && cfg.RoutingProvider == "osrm" {
 		if strings.HasPrefix(cfg.RoutingAPIKey, "pk.") {
 			cfg.RoutingProvider = "mapbox"
 		} else {
 			cfg.RoutingProvider = "openrouteservice"
 		}
+	}
+
+	// Auto-detect Mapbox for map tiles if key starts with pk.
+	if cfg.MapAPIKey == "" && strings.HasPrefix(cfg.RoutingAPIKey, "pk.") {
+		cfg.MapAPIKey = cfg.RoutingAPIKey
+		cfg.MapProvider = "mapbox"
+	} else if cfg.MapAPIKey != "" && strings.HasPrefix(cfg.MapAPIKey, "pk.") {
+		cfg.MapProvider = "mapbox"
 	}
 
 	return cfg

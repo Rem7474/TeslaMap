@@ -13,8 +13,11 @@ services:
       - MQTT_BROKER=tcp://mosquitto:1883
       - TESLAMATE_CAR_ID=1
       - ADMIN_PASSWORD=ChangeMeStrongPassword!
-      - ROUTING_PROVIDER=openrouteservice # ou mapbox, osrm
-      - ROUTING_API_KEY=votre_cle_api_openrouteservice
+      - ROUTING_PROVIDER=openrouteservice # openrouteservice, mapbox, or osrm
+      - ROUTING_API_KEY=votre_cle_api_openrouteservice # ou clé Mapbox (pk.xxx)
+      - MAP_PROVIDER=cartodb # cartodb (gratuit sans clé), mapbox, maptiler, stadia
+      - MAP_API_KEY= # Optionnel: clé Mapbox (pk.xxx), MapTiler ou Stadia
+      # - MAP_TILE_URL= # Optionnel: URL de tuiles personnalisée
       - SIMULATION_MODE=false # passer à true pour tester sans voiture
     volumes:
       - teslamap-data:/data

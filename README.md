@@ -112,7 +112,10 @@ docker compose up -d teslamap
 | `ADMIN_PASSWORD` | Password to access `/admin` dashboard | `admin123` |
 | `SESSION_SECRET` | Secret key for signed session cookies | *(randomly generated)* |
 | `ROUTING_PROVIDER` | Routing engine (`openrouteservice`, `mapbox`, `osrm`) | `osrm` |
-| `ROUTING_API_KEY` | API key for OpenRouteService or Mapbox | *(empty)* |
+| `ROUTING_API_KEY` | API key for OpenRouteService or Mapbox (`pk.xxx`) | *(empty)* |
+| `MAP_PROVIDER` | Map tiles provider (`cartodb`, `mapbox`, `maptiler`, `stadia`) | `cartodb` |
+| `MAP_API_KEY` | API key for Mapbox, MapTiler, or Stadia tiles (auto-detected if `ROUTING_API_KEY` is a Mapbox key) | *(empty)* |
+| `MAP_TILE_URL` | Custom Leaflet tile template URL (optional) | *(empty)* |
 | `SIMULATION_MODE` | Enable simulated vehicle driving | `false` |
 
 ---
