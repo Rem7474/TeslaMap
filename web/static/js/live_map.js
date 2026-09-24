@@ -141,6 +141,7 @@
     const targetPos = [targetLat, targetLon];
     const targetH = targetHeading || 0;
 
+    carMarker.setLatLng(targetPos);
     if (!map.hasLayer(carMarker)) {
       carMarker.addTo(map);
     }
@@ -158,8 +159,15 @@
       if (carIconElement) carIconElement.style.transform = `rotate(${targetH}deg)`;
 
       isProgrammaticMove = true;
-      map.setView(currentLatLng, 15, { animate: false });
+      if (map) {
+        map.invalidateSize();
+        map.setView(currentLatLng, 15, { animate: false });
+      }
       setTimeout(function () {
+        if (map) {
+          map.invalidateSize();
+          map.setView(currentLatLng, 15, { animate: false });
+        }
         isProgrammaticMove = false;
       }, 150);
       if (routeLine && fullRouteCoords && fullRouteCoords.length > 1) {
@@ -292,6 +300,36 @@
       maxZoom: tileMaxZoom
     }).addTo(map);
 
+    // Bulletproof container sizing: automatically handle DOM layout, window resize, tab switch, and iframe scaling
+    if (window.ResizeObserver) {
+      const resizeObserver = new ResizeObserver(function () {
+        if (map) {
+          map.invalidateSize();
+        }
+      });
+      const mapEl = document.getElementById('map');
+      if (mapEl) {
+        resizeObserver.observe(mapEl);
+      }
+    }
+
+    window.addEventListener('resize', function () {
+      if (map) {
+        map.invalidateSize();
+      }
+    });
+
+    window.addEventListener('load', function () {
+      if (map) {
+        map.invalidateSize();
+      }
+    });
+
+    // Fallback delayed size invalidation for iframes and initial CSS/font layout resolution
+    setTimeout(function () { if (map) map.invalidateSize(); }, 60);
+    setTimeout(function () { if (map) map.invalidateSize(); }, 250);
+    setTimeout(function () { if (map) map.invalidateSize(); }, 800);
+
     // Custom Car DivIcon
     const carIcon = L.divIcon({
       className: 'car-marker-container',
@@ -381,6 +419,7 @@
             speed: st.speed,
             battery_level: st.battery_level,
             in_safe_zone: false,
+            teslamate_geofence: st.teslamate_geofence || '',
             has_active_route: st.has_active_route,
             destination: (st.route && st.route.destination) || '',
             distance_left_km: (st.route && st.route.distance_to_arrival_km) || 0,
@@ -456,12 +495,24 @@
 
         if (firstFix && map) {
           firstFix = false;
+          map.invalidateSize();
           map.fitBounds(traveledLine.getBounds(), { padding: [50, 50], maxZoom: 15 });
         }
+      } else {
+        if (firstFix && map) {
+          firstFix = false;
+          map.invalidateSize();
+          if (data.route_coordinates && data.route_coordinates.length > 1) {
+            map.fitBounds(L.latLngBounds(data.route_coordinates), { padding: [50, 50], maxZoom: 15 });
+          }
+        }
+      }
+      if (map) {
+        map.invalidateSize();
       }
     } else {
       if (elSafeZoneAlert) elSafeZoneAlert.style.display = 'none';
-      if (data.latitude != null && data.longitude != null) {
+      if (data.latitude != null && data.longitude != null && (data.latitude !== 0 || data.longitude !== 0)) {
         const serverCoords = data.traveled_coordinates || [];
         if (serverCoords.length > 1) {
           confirmedTraveledCoords = serverCoords.slice(0, -1);
@@ -506,6 +557,9 @@
     } else if (data.state === 'charging') {
       statusText = I18n.t('charging');
       statusClass = "m3-chip m3-chip-warning";
+    }
+    if (token === 'admin' && data.teslamate_geofence) {
+      statusText += ` (${data.teslamate_geofence})`;
     }
     if (!data.in_safe_zone) {
       updateStatusChip(statusText, statusClass);

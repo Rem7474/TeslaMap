@@ -364,7 +364,11 @@ func (sm *StateManager) UpdateBattery(batteryLevel float64) {
 
 func (sm *StateManager) UpdateTeslaMateGeofence(name string) {
 	sm.mu.Lock()
-	sm.state.TeslaMateGeofence = strings.TrimSpace(name)
+	clean := strings.TrimSpace(name)
+	if strings.EqualFold(clean, "false") || strings.EqualFold(clean, "null") || strings.EqualFold(clean, "none") || clean == "<nil>" {
+		clean = ""
+	}
+	sm.state.TeslaMateGeofence = clean
 	sm.state.UpdatedAt = time.Now()
 	sm.mu.Unlock()
 	sm.notifySubscribers()
