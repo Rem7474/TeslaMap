@@ -302,6 +302,33 @@
   font-weight: 600;
 }
 
+/* TeslaMate Sync & Geofence Status */
+.active-geofence-alert {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--md-sys-color-success-container);
+  border: 1px solid rgba(74, 222, 128, 0.35);
+  border-radius: var(--md-shape-md);
+  padding: 14px 18px;
+  margin-bottom: 14px;
+  color: var(--md-sys-color-on-success-container);
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: var(--md-sys-elevation-1);
+}
+
+.teslamate-sync-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 18px;
+  background: var(--md-sys-color-surface-container);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-shape-md);
+  margin-bottom: 16px;
+}
+
 /* Safe Zone chips */
 .zone-chip {
   display: flex;

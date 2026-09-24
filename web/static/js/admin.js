@@ -144,11 +144,15 @@
       }
     }
 
-    // TeslaMate geofence active chip
+    // TeslaMate geofence active alert banner
     if (elTmActiveChip) {
       if (data.teslamate_geofence) {
-        elTmActiveChip.style.display = 'inline-block';
-        elTmActiveChip.innerHTML = `<span class="m3-chip m3-chip-success" style="font-size:12px;margin-top:6px;">${I18n.t('teslamate_in_geofence', { zone: escapeHtml(data.teslamate_geofence) })}</span>`;
+        elTmActiveChip.style.display = 'flex';
+        elTmActiveChip.innerHTML = `
+          <span class="pulse-dot"></span>
+          <span class="material-symbols-outlined" style="color: var(--md-sys-color-success); font-size: 20px;">verified_user</span>
+          <span>${I18n.t('teslamate_in_geofence', { zone: escapeHtml(data.teslamate_geofence) })}</span>
+        `;
       } else {
         elTmActiveChip.style.display = 'none';
         elTmActiveChip.innerHTML = '';
