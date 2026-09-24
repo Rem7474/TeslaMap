@@ -199,10 +199,18 @@ body {
   border-color: rgba(250, 204, 21, 0.3);
 }
 
+.m3-chip-warning .pulse-dot {
+  background-color: #facc15;
+}
+
 .m3-chip-error {
   background: var(--md-sys-color-error-container);
   color: #fca5a5;
   border-color: rgba(255, 180, 171, 0.3);
+}
+
+.m3-chip-error .pulse-dot {
+  background-color: #f87171;
 }
 
 /* Material 3 Outlined Input */

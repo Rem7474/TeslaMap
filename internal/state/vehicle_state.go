@@ -50,7 +50,6 @@ type PublicTelemetry struct {
 	Speed          *float64    `json:"speed,omitempty"`
 	BatteryLevel   *float64    `json:"battery_level,omitempty"`
 	InSafeZone     bool        `json:"in_safe_zone"`
-	SafeZoneName   string      `json:"safe_zone_name,omitempty"`
 	HasActiveRoute bool        `json:"has_active_route"`
 	Destination    string      `json:"destination,omitempty"`
 	ETA            string      `json:"eta,omitempty"`
@@ -585,17 +584,11 @@ func (sm *StateManager) GetPublicTelemetry(link *database.SharedLink) PublicTele
 
 	inTeslaMateGeofence := st.TeslaMateGeofence != ""
 	inSafeZone := geoResult.IsInsideSafeZone || inTeslaMateGeofence
-	zoneName := geoResult.ZoneName
-	if zoneName == "" && inTeslaMateGeofence {
-		zoneName = st.TeslaMateGeofence
-	}
-
 	now := time.Now()
 	res := PublicTelemetry{
 		State:          st.State,
 		Heading:        st.Heading,
 		InSafeZone:     inSafeZone,
-		SafeZoneName:   zoneName,
 		HasActiveRoute: st.HasActiveRoute,
 		UpdatedAt:      st.UpdatedAt.Format(time.RFC3339),
 	}

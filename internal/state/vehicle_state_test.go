@@ -65,9 +65,6 @@ func TestSafeZoneMasking(t *testing.T) {
 	if telem.Latitude != nil || telem.Longitude != nil {
 		t.Errorf("expected coordinates to be nil/masked inside safe zone")
 	}
-	if telem.SafeZoneName != "Home" {
-		t.Errorf("expected SafeZoneName 'Home', got '%s'", telem.SafeZoneName)
-	}
 
 	// Move car outside safe zone
 	sm.UpdateLocation(48.9000, 2.3000, 180, 50)
@@ -99,9 +96,6 @@ func TestTeslaMateGeofenceMasking(t *testing.T) {
 	telem := sm.GetPublicTelemetry(link)
 	if !telem.InSafeZone {
 		t.Errorf("expected vehicle to be in safe zone when TeslaMate geofence is active")
-	}
-	if telem.SafeZoneName != "Maison" {
-		t.Errorf("expected SafeZoneName 'Maison', got '%s'", telem.SafeZoneName)
 	}
 	if telem.Latitude != nil || telem.Longitude != nil {
 		t.Errorf("expected coordinates to be nil/masked inside TeslaMate geofence")

@@ -429,7 +429,6 @@
     // 1. Safe Zone Check
     if (data.in_safe_zone) {
       if (elSafeZoneAlert) elSafeZoneAlert.style.display = 'flex';
-      if (elSafeZoneName) elSafeZoneName.textContent = data.safe_zone_name || I18n.t('private_zone');
       if (map && carMarker && map.hasLayer(carMarker)) {
         map.removeLayer(carMarker);
       }
