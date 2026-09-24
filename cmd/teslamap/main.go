@@ -38,6 +38,7 @@ func main() {
 	log.Println("==================================================")
 	log.Printf("• Port:              %s\n", cfg.Port)
 	log.Printf("• Database:          %s\n", cfg.DatabasePath)
+	log.Printf("• Map Provider:      %s\n", cfg.MapProvider)
 	log.Printf("• Routing Provider:  %s\n", cfg.RoutingProvider)
 	log.Printf("• Simulation Mode:   %v\n", cfg.SimulationMode)
 	if !cfg.SimulationMode {
