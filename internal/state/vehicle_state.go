@@ -117,16 +117,18 @@ func (sm *StateManager) UpdateLocation(lat, lon, heading, speed float64) {
 	sm.state.Speed = speed
 	sm.state.UpdatedAt = time.Now()
 	routeActive := sm.state.HasActiveRoute && sm.state.Route != nil
-	var destLat, destLon float64
+	var destLat, destLon, distKm, mins float64
 	if routeActive {
 		destLat = sm.state.Route.Latitude
 		destLon = sm.state.Route.Longitude
+		distKm = sm.state.Route.DistanceToArrival
+		mins = sm.state.Route.MinutesToArrival
 	}
 	sm.mu.Unlock()
 
 	// If route is active, calculate or update routing polyline in background if needed
 	if routeActive && sm.router != nil {
-		go sm.ensureRoutePolyline(lat, lon, destLat, destLon)
+		go sm.ensureRoutePolyline(lat, lon, destLat, destLon, distKm, mins)
 	}
 
 	sm.notifySubscribers()
@@ -198,20 +200,20 @@ func (sm *StateManager) UpdateActiveRoute(destination string, lat, lon, minutes,
 	sm.mu.Unlock()
 
 	if sm.router != nil && (carLat != 0 || carLon != 0) {
-		go sm.ensureRoutePolyline(carLat, carLon, lat, lon)
+		go sm.ensureRoutePolyline(carLat, carLon, lat, lon, distance, minutes)
 	}
 
 	sm.notifySubscribers()
 }
 
-func (sm *StateManager) ensureRoutePolyline(startLat, startLon, destLat, destLon float64) {
+func (sm *StateManager) ensureRoutePolyline(startLat, startLon, destLat, destLon, targetDistanceKm, targetMinutes float64) {
 	if startLat == 0 && startLon == 0 {
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 	defer cancel()
 
-	res, err := sm.router.CalculateRoute(ctx, startLat, startLon, destLat, destLon)
+	res, err := sm.router.CalculateRoute(ctx, startLat, startLon, destLat, destLon, targetDistanceKm, targetMinutes)
 	if err == nil && res != nil && len(res.Coordinates) > 0 {
 		sm.mu.Lock()
 		if sm.state.Route != nil {
