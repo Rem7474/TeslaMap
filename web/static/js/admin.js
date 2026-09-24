@@ -174,32 +174,40 @@
       }
 
       return `
-        <div class="m3-card link-item" style="opacity: ${isExpired ? '0.6' : '1'}">
-          <div class="link-header">
-            <div>
-              <span class="link-label">${escapeHtml(link.label)}</span>
+        <div class="link-card ${isExpired ? 'expired' : ''}">
+          <div class="link-card-main">
+            <div class="link-card-title">
+              <span>${escapeHtml(link.label || 'Trip Share')}</span>
               ${statusBadge}
             </div>
-            <div class="link-actions">
-              ${!isExpired ? `
-                <button class="m3-button m3-button-text" onclick="TeslaAdmin.copyLink('${fullUrl}')">
-                  ${I18n.t('copy_url')}
-                </button>
-                <button class="m3-button m3-button-text m3-button-danger" onclick="TeslaAdmin.revokeLink(${link.id})">
-                  ${I18n.t('revoke')}
-                </button>
-              ` : `
-                <button class="m3-button m3-button-text m3-button-danger" onclick="TeslaAdmin.deleteLink(${link.id})">
-                  ${I18n.t('delete')}
-                </button>
-              `}
+            <div class="link-card-meta">
+              <span>🕒 ${expText}</span>
+              <span>👁 ${link.view_count || 0} ${I18n.t('views')}</span>
+              ${link.show_speed ? `<span>⚡ ${I18n.t('speed')}</span>` : ''}
+              ${link.show_battery ? `<span>🔋 ${I18n.t('battery')}</span>` : ''}
             </div>
           </div>
-          <div class="link-meta">
-            <span>🕒 ${expText}</span>
-            <span>👁 ${link.view_count || 0} ${I18n.t('views')}</span>
-            ${link.show_speed ? `<span>⚡ ${I18n.t('speed')}</span>` : ''}
-            ${link.show_battery ? `<span>🔋 ${I18n.t('battery')}</span>` : ''}
+          <div class="link-card-actions">
+            ${!isExpired ? `
+              <button class="m3-button m3-button-filled" onclick="TeslaAdmin.copyLink('${fullUrl}')">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                ${I18n.t('copy_url')}
+              </button>
+              <button class="m3-button m3-button-text m3-button-danger" onclick="TeslaAdmin.revokeLink(${link.id})">
+                ${I18n.t('revoke')}
+              </button>
+            ` : `
+              <button class="m3-button m3-button-text m3-button-danger" onclick="TeslaAdmin.deleteLink(${link.id})">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+                ${I18n.t('delete')}
+              </button>
+            `}
           </div>
         </div>
       `;

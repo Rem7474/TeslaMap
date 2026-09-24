@@ -96,11 +96,17 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 16px;
-  padding: 16px 20px;
+  padding: 18px 22px;
   background: var(--md-sys-color-surface-container);
   border: 1px solid var(--md-sys-color-outline-variant);
   border-radius: var(--md-shape-lg);
+  box-shadow: var(--md-sys-elevation-1);
   transition: all 0.2s ease;
+}
+
+.link-card:hover {
+  border-color: var(--md-sys-color-outline);
+  box-shadow: var(--md-sys-elevation-2);
 }
 
 .link-card.expired {
@@ -110,7 +116,8 @@
 .link-card-main {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
+  min-width: 260px;
 }
 
 .link-card-title {
@@ -119,22 +126,29 @@
   color: var(--md-sys-color-on-surface);
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .link-card-meta {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
   font-size: 13px;
   color: var(--md-sys-color-on-surface-variant);
   flex-wrap: wrap;
 }
 
+.link-card-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
 .link-card-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  flex-shrink: 0;
 }
 
 /* Preset buttons for TTL dialog */
@@ -169,12 +183,14 @@
 
 /* Safe Zone tags */
 .zone-chip {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 16px;
+  width: 100%;
+  padding: 12px 18px;
   background: var(--md-sys-color-surface-container-high);
   border: 1px solid var(--md-sys-color-outline-variant);
   border-radius: var(--md-shape-md);
   margin-bottom: 8px;
+  box-sizing: border-box;
 }
