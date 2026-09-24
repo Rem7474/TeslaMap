@@ -336,16 +336,24 @@ func TestTripSummaryAndActiveInterest(t *testing.T) {
 
 	sm := NewStateManager(nil, db)
 
-	// No subscribers, no links -> no active interest
-	if sm.HasActiveInterest() {
-		t.Errorf("expected no active interest initially")
+	// No subscribers -> HasActiveViewers should be false
+	if sm.HasActiveViewers() {
+		t.Errorf("expected no active viewers initially")
 	}
 
-	// Create an active link -> HasActiveInterest should be true
-	link, _ := db.CreateSharedLink("Trip 1", nil, nil, false, true, true)
-	if !sm.HasActiveInterest() {
-		t.Errorf("expected active interest after creating link")
+	// Viewer connects -> HasActiveViewers should be true
+	ch := sm.Subscribe()
+	if !sm.HasActiveViewers() {
+		t.Errorf("expected active viewers after Subscribe")
 	}
+
+	// Viewer disconnects -> HasActiveViewers should return to false
+	sm.Unsubscribe(ch)
+	if sm.HasActiveViewers() {
+		t.Errorf("expected no active viewers after Unsubscribe")
+	}
+
+	link, _ := db.CreateSharedLink("Trip 1", nil, nil, false, true, true)
 
 	// Drive and record positions
 	sm.UpdateLocation(48.8584, 2.2945, 90, 50)

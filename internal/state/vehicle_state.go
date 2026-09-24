@@ -174,28 +174,21 @@ func (sm *StateManager) expireLinksNow() {
 	sm.notifySubscribers()
 }
 
-func (sm *StateManager) HasActiveInterest() bool {
+func (sm *StateManager) HasActiveViewers() bool {
 	sm.subscribersMu.Lock()
-	hasSubs := len(sm.subscribers) > 0
-	sm.subscribersMu.Unlock()
-	if hasSubs {
-		return true
-	}
+	defer sm.subscribersMu.Unlock()
+	return len(sm.subscribers) > 0
+}
 
-	if sm.db != nil {
-		hasActiveLinks, err := sm.db.HasActiveSharedLinks()
-		if err == nil && hasActiveLinks {
-			return true
-		}
-	}
-	return false
+func (sm *StateManager) HasActiveInterest() bool {
+	return sm.HasActiveViewers()
 }
 
 func (sm *StateManager) TriggerRouteCalculation() {
 	sm.mu.RLock()
 	hasRoute := sm.state.HasActiveRoute && sm.state.Route != nil
 	var carLat, carLon, destLat, destLon, distKm, mins float64
-	var noCoords bool
+	var needsCalc bool
 	if hasRoute {
 		carLat = sm.state.Latitude
 		carLon = sm.state.Longitude
@@ -203,11 +196,17 @@ func (sm *StateManager) TriggerRouteCalculation() {
 		destLon = sm.state.Route.Longitude
 		distKm = sm.state.Route.DistanceToArrival
 		mins = sm.state.Route.MinutesToArrival
-		noCoords = len(sm.state.Route.Coordinates) == 0
+		coords := sm.state.Route.Coordinates
+		if len(coords) == 0 {
+			needsCalc = true
+		} else if carLat != 0 && carLon != 0 {
+			needsCalc = !isPointNearPolyline(carLat, carLon, coords, 350.0)
+		}
 	}
 	sm.mu.RUnlock()
 
-	if hasRoute && noCoords && sm.router != nil && (carLat != 0 || carLon != 0) {
+	if hasRoute && needsCalc && sm.router != nil && (carLat != 0 || carLon != 0) {
+		log.Println("[StateManager] Viewer active: calculating route on-demand (lazy-loading)...")
 		go sm.ensureRoutePolyline(carLat, carLon, destLat, destLon, distKm, mins)
 	}
 }
