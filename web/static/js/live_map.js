@@ -23,7 +23,7 @@
   let animStartHeading = 0;
   let animTargetHeading = 0;
   let lastServerUpdateTime = 0;
-  let lastTraveledCoords = [];
+  let confirmedTraveledCoords = [];
   let fullRouteCoords = [];
   let lastRouteIdx = 0;
 
@@ -182,8 +182,8 @@
       animTargetHeading = targetH;
       carMarker.setLatLng(currentLatLng);
       if (carIconElement) carIconElement.style.transform = `rotate(${targetH}deg)`;
-      if (traveledLine && lastTraveledCoords && lastTraveledCoords.length > 0) {
-        traveledLine.setLatLngs(lastTraveledCoords.concat([currentLatLng]));
+      if (traveledLine && confirmedTraveledCoords && confirmedTraveledCoords.length > 0) {
+        traveledLine.setLatLngs(confirmedTraveledCoords.concat([currentLatLng]));
       }
       if (routeLine && fullRouteCoords && fullRouteCoords.length > 1) {
         routeLine.setLatLngs(getRemainingRoute(currentLatLng, fullRouteCoords));
@@ -211,15 +211,6 @@
       cancelAnimationFrame(animFrameId);
     }
 
-    // Camera pan in sync with the vehicle animation duration
-    if (autoFollow && map) {
-      isProgrammaticMove = true;
-      map.panTo(targetPos, { animate: true, duration: animDuration / 1000, easeLinearity: 0.25 });
-      setTimeout(function () {
-        isProgrammaticMove = false;
-      }, animDuration + 50);
-    }
-
     function step(timestamp) {
       const elapsed = timestamp - animStartTime;
       const progress = Math.min(elapsed / animDuration, 1.0);
@@ -237,9 +228,15 @@
         carIconElement.style.transform = `rotate(${heading}deg)`;
       }
 
+      // Camera stays locked directly to the car's 60fps movement
+      if (autoFollow && map) {
+        isProgrammaticMove = true;
+        map.panTo(currentLatLng, { animate: false });
+      }
+
       // Smoothly update the end of the gray traveled line to the car's current animated point
-      if (traveledLine && lastTraveledCoords && lastTraveledCoords.length > 0) {
-        traveledLine.setLatLngs(lastTraveledCoords.concat([currentLatLng]));
+      if (traveledLine && (confirmedTraveledCoords.length > 0 || currentLatLng)) {
+        traveledLine.setLatLngs(confirmedTraveledCoords.concat([currentLatLng]));
       }
 
       // Smoothly update the upcoming blue route line so it shrinks seamlessly from the car's position at 60fps
@@ -252,6 +249,15 @@
       } else {
         animStartHeading = animTargetHeading % 360;
         animFrameId = null;
+        if (lastTelemetry && lastTelemetry.traveled_coordinates) {
+          confirmedTraveledCoords = lastTelemetry.traveled_coordinates;
+          if (traveledLine) {
+            traveledLine.setLatLngs(confirmedTraveledCoords);
+          }
+        }
+        setTimeout(function () {
+          isProgrammaticMove = false;
+        }, 50);
       }
     }
 
@@ -382,14 +388,21 @@
     } else {
       if (elSafeZoneAlert) elSafeZoneAlert.style.display = 'none';
       if (data.latitude != null && data.longitude != null) {
-        lastTraveledCoords = data.traveled_coordinates || [];
+        const serverCoords = data.traveled_coordinates || [];
+        if (serverCoords.length > 1) {
+          confirmedTraveledCoords = serverCoords.slice(0, -1);
+        } else if (serverCoords.length === 1) {
+          confirmedTraveledCoords = serverCoords;
+        } else {
+          confirmedTraveledCoords = [];
+        }
 
         // Smoothly interpolate vehicle position, heading, and map pan at 60fps
         animateVehicleTo(data.latitude, data.longitude, data.heading || 0);
 
-        // Ensure traveledLine is created and displayed
-        if (lastTraveledCoords.length > 0) {
-          const pts = lastTraveledCoords.concat([currentLatLng || [data.latitude, data.longitude]]);
+        // Ensure traveledLine is created and displayed ending at car's current position
+        const pts = confirmedTraveledCoords.concat([currentLatLng || [data.latitude, data.longitude]]);
+        if (pts.length > 0) {
           if (!traveledLine) {
             traveledLine = L.polyline(pts, {
               color: '#94a3b8',
@@ -518,11 +531,12 @@
     if (elRecenterBar) elRecenterBar.classList.remove('visible');
     if (elPendingCard) elPendingCard.style.display = 'none';
     if (elExpiredCard) elExpiredCard.style.display = 'block';
-    if (traveledLine && map && map.hasLayer(traveledLine)) map.removeLayer(traveledLine);
-    if (routeLine && map && map.hasLayer(routeLine)) map.removeLayer(routeLine);
-    if (destMarker && map && map.hasLayer(destMarker)) map.removeLayer(destMarker);
-    fullRouteCoords = [];
-    lastRouteIdx = 0;
+
+    // Keep carMarker, traveledLine, routeLine and destMarker intact on the map!
+    // Center map view on vehicle's last known position
+    if (currentLatLng && map) {
+      map.setView(currentLatLng, Math.max(map.getZoom(), 15), { animate: false });
+    }
   }
 
   function updateLangIndicator() {
@@ -549,9 +563,15 @@
       updateLangIndicator();
     }
 
+    initMap();
+
+    // Render initial telemetry snapshot if provided by server (for both live and expired links)
+    if (window.TESLAMAP_INITIAL_TELEMETRY) {
+      handleTelemetryUpdate(window.TESLAMAP_INITIAL_TELEMETRY);
+    }
+
     if (window.TESLAMAP_IS_EXPIRED) {
       showExpiredScreen();
-      initMap();
       return;
     }
 
@@ -561,7 +581,6 @@
       if (elPendingCard) elPendingCard.style.display = 'block';
     }
 
-    initMap();
     connectSSE();
   });
 })();

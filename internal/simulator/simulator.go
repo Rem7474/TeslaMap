@@ -38,38 +38,51 @@ func StartTripSimulator(sm *state.StateManager) {
 			log.Println("[Simulator] New simulated journey starting: Paris -> Fontainebleau")
 			sm.UpdateState("driving")
 			sm.UpdateBattery(battery)
+			sm.UpdateLocation(waypoints[0].lat, waypoints[0].lon, 140, 0)
 			sm.UpdateActiveRoute("Fontainebleau - Château", destLat, destLon, 54, totalDistKm, 62)
 
-			// Interpolate smoothly between waypoints
-			for i := 0; i < len(waypoints)-1; i++ {
-				w1 := waypoints[i]
-				w2 := waypoints[i+1]
-				steps := 25
+			// Wait up to 3 seconds for the routing engine to compute the real highway geometry
+			var pathPts [][]float64
+			for w := 0; w < 10; w++ {
+				time.Sleep(300 * time.Millisecond)
+				st := sm.GetRawState()
+				if st.Route != nil && len(st.Route.Coordinates) > 5 {
+					pathPts = st.Route.Coordinates
+					break
+				}
+			}
 
-				for s := 0; s <= steps; s++ {
-					t := float64(s) / float64(steps)
-					curLat := w1.lat + t*(w2.lat-w1.lat)
-					curLon := w1.lon + t*(w2.lon-w1.lon)
+			if len(pathPts) > 5 {
+				log.Printf("[Simulator] Driving along calculated road route (%d geometry points)\n", len(pathPts))
+				// Step through road points: advance by 3 geometry points per 1.5s tick
+				stepSize := 3
+				for i := 0; i < len(pathPts)-1; i += stepSize {
+					nextIdx := i + stepSize
+					if nextIdx >= len(pathPts) {
+						nextIdx = len(pathPts) - 1
+					}
+					p1 := pathPts[i]
+					p2 := pathPts[nextIdx]
 
-					// Calculate heading
-					dLon := w2.lon - w1.lon
-					y := math.Sin(dLon*math.Pi/180) * math.Cos(w2.lat*math.Pi/180)
-					x := math.Cos(w1.lat*math.Pi/180)*math.Sin(w2.lat*math.Pi/180) -
-						math.Sin(w1.lat*math.Pi/180)*math.Cos(w2.lat*math.Pi/180)*math.Cos(dLon*math.Pi/180)
+					curLat, curLon := p2[0], p2[1]
+
+					// Heading
+					dLon := p2[1] - p1[1]
+					y := math.Sin(dLon*math.Pi/180) * math.Cos(p2[0]*math.Pi/180)
+					x := math.Cos(p1[0]*math.Pi/180)*math.Sin(p2[0]*math.Pi/180) -
+						math.Sin(p1[0]*math.Pi/180)*math.Cos(p2[0]*math.Pi/180)*math.Cos(dLon*math.Pi/180)
 					heading := math.Atan2(y, x) * 180 / math.Pi
 					if heading < 0 {
 						heading += 360
 					}
 
-					speed := 75.0 + 35.0*math.Sin(float64(s)/3.0) // ~75-110 km/h
-
-					// Distance remaining approximation
-					overallProgress := (float64(i) + t) / float64(len(waypoints)-1)
-					distLeft := totalDistKm * (1.0 - overallProgress)
+					speed := 85.0 + 20.0*math.Sin(float64(i)/15.0) // ~85-105 km/h
+					progressRatio := float64(i) / float64(len(pathPts)-1)
+					distLeft := totalDistKm * (1.0 - progressRatio)
 					if distLeft < 0.2 {
 						distLeft = 0
 					}
-					minsLeft := math.Round(distLeft / 1.1)
+					minsLeft := math.Round(distLeft / 1.2)
 
 					battery -= 0.05
 					sm.UpdateBattery(battery)
@@ -77,6 +90,44 @@ func StartTripSimulator(sm *state.StateManager) {
 					sm.UpdateActiveRoute("Fontainebleau - Château", destLat, destLon, minsLeft, distLeft, battery-12)
 
 					time.Sleep(1500 * time.Millisecond)
+				}
+			} else {
+				// Fallback to waypoint interpolation if route coordinates are unavailable
+				for i := 0; i < len(waypoints)-1; i++ {
+					w1 := waypoints[i]
+					w2 := waypoints[i+1]
+					steps := 25
+
+					for s := 0; s <= steps; s++ {
+						t := float64(s) / float64(steps)
+						curLat := w1.lat + t*(w2.lat-w1.lat)
+						curLon := w1.lon + t*(w2.lon-w1.lon)
+
+						dLon := w2.lon - w1.lon
+						y := math.Sin(dLon*math.Pi/180) * math.Cos(w2.lat*math.Pi/180)
+						x := math.Cos(w1.lat*math.Pi/180)*math.Sin(w2.lat*math.Pi/180) -
+							math.Sin(w1.lat*math.Pi/180)*math.Cos(w2.lat*math.Pi/180)*math.Cos(dLon*math.Pi/180)
+						heading := math.Atan2(y, x) * 180 / math.Pi
+						if heading < 0 {
+							heading += 360
+						}
+
+						speed := 75.0 + 35.0*math.Sin(float64(s)/3.0)
+
+						overallProgress := (float64(i) + t) / float64(len(waypoints)-1)
+						distLeft := totalDistKm * (1.0 - overallProgress)
+						if distLeft < 0.2 {
+							distLeft = 0
+						}
+						minsLeft := math.Round(distLeft / 1.1)
+
+						battery -= 0.05
+						sm.UpdateBattery(battery)
+						sm.UpdateLocation(curLat, curLon, heading, speed)
+						sm.UpdateActiveRoute("Fontainebleau - Château", destLat, destLon, minsLeft, distLeft, battery-12)
+
+						time.Sleep(1500 * time.Millisecond)
+					}
 				}
 			}
 

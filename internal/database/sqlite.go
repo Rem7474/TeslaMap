@@ -24,6 +24,7 @@ type SharedLink struct {
 	ShowBattery     bool       `json:"show_battery"`
 	IsActive        bool       `json:"is_active"`
 	ViewCount       int64      `json:"view_count"`
+	LastTelemetry   string     `json:"last_telemetry,omitempty"`
 }
 
 func (l *SharedLink) IsPending() bool {
@@ -112,8 +113,9 @@ func (db *DB) migrate() error {
 		return err
 	}
 
-	// Add starts_at to existing databases (ignore if column exists)
+	// Add starts_at and last_telemetry to existing databases (ignore if column exists)
 	_, _ = db.conn.Exec("ALTER TABLE shared_links ADD COLUMN starts_at DATETIME;")
+	_, _ = db.conn.Exec("ALTER TABLE shared_links ADD COLUMN last_telemetry TEXT;")
 	return nil
 }
 
@@ -164,7 +166,7 @@ func (db *DB) CreateSharedLink(label string, startsAt, expiresAt *time.Time, exp
 
 func (db *DB) GetSharedLinkByToken(token string) (*SharedLink, error) {
 	query := `
-	SELECT id, token, label, created_at, starts_at, expires_at, expire_on_arrival, show_speed, show_battery, is_active, view_count
+	SELECT id, token, label, created_at, starts_at, expires_at, expire_on_arrival, show_speed, show_battery, is_active, view_count, COALESCE(last_telemetry, '')
 	FROM shared_links
 	WHERE token = ?
 	`
@@ -172,7 +174,7 @@ func (db *DB) GetSharedLinkByToken(token string) (*SharedLink, error) {
 
 	var l SharedLink
 	var startsAt, expiresAt sql.NullTime
-	err := row.Scan(&l.ID, &l.Token, &l.Label, &l.CreatedAt, &startsAt, &expiresAt, &l.ExpireOnArrival, &l.ShowSpeed, &l.ShowBattery, &l.IsActive, &l.ViewCount)
+	err := row.Scan(&l.ID, &l.Token, &l.Label, &l.CreatedAt, &startsAt, &expiresAt, &l.ExpireOnArrival, &l.ShowSpeed, &l.ShowBattery, &l.IsActive, &l.ViewCount, &l.LastTelemetry)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -188,6 +190,11 @@ func (db *DB) GetSharedLinkByToken(token string) (*SharedLink, error) {
 	}
 
 	return &l, nil
+}
+
+func (db *DB) SaveLinkLastTelemetry(token string, telemetryJSON string) error {
+	_, err := db.conn.Exec("UPDATE shared_links SET last_telemetry = ? WHERE token = ?", telemetryJSON, token)
+	return err
 }
 
 func (db *DB) IncrementLinkViewCount(token string) error {
@@ -207,7 +214,7 @@ func (db *DB) DeleteLink(id int64) error {
 
 func (db *DB) ListSharedLinks() ([]SharedLink, error) {
 	query := `
-	SELECT id, token, label, created_at, starts_at, expires_at, expire_on_arrival, show_speed, show_battery, is_active, view_count
+	SELECT id, token, label, created_at, starts_at, expires_at, expire_on_arrival, show_speed, show_battery, is_active, view_count, COALESCE(last_telemetry, '')
 	FROM shared_links
 	ORDER BY created_at DESC
 	`
@@ -221,7 +228,7 @@ func (db *DB) ListSharedLinks() ([]SharedLink, error) {
 	for rows.Next() {
 		var l SharedLink
 		var startsAt, expiresAt sql.NullTime
-		if err := rows.Scan(&l.ID, &l.Token, &l.Label, &l.CreatedAt, &startsAt, &expiresAt, &l.ExpireOnArrival, &l.ShowSpeed, &l.ShowBattery, &l.IsActive, &l.ViewCount); err != nil {
+		if err := rows.Scan(&l.ID, &l.Token, &l.Label, &l.CreatedAt, &startsAt, &expiresAt, &l.ExpireOnArrival, &l.ShowSpeed, &l.ShowBattery, &l.IsActive, &l.ViewCount, &l.LastTelemetry); err != nil {
 			return nil, err
 		}
 		if startsAt.Valid {

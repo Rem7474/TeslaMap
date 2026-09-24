@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 	"time"
+
+	"teslamap/internal/state"
 )
 
 func (s *Server) handleShareView(w http.ResponseWriter, r *http.Request) {
@@ -67,24 +69,45 @@ func (s *Server) handleShareView(w http.ResponseWriter, r *http.Request) {
 		maxZoom = 20
 	}
 
+	var initialTelemetry *state.PublicTelemetry
+	if link != nil {
+		if link.IsExpired() && link.LastTelemetry != "" {
+			var t state.PublicTelemetry
+			if err := json.Unmarshal([]byte(link.LastTelemetry), &t); err == nil {
+				initialTelemetry = &t
+			}
+		}
+		if initialTelemetry == nil {
+			t := s.stateManager.GetPublicTelemetry(link)
+			initialTelemetry = &t
+			if link.IsExpired() {
+				if b, err := json.Marshal(t); err == nil {
+					_ = s.db.SaveLinkLastTelemetry(link.Token, string(b))
+				}
+			}
+		}
+	}
+
 	data := struct {
-		Token       string
-		Title       string
-		IsExpired   bool
-		IsPending   bool
-		StartsAt    string
-		TileURL     string
-		Attribution string
-		MaxZoom     int
+		Token            string
+		Title            string
+		IsExpired        bool
+		IsPending        bool
+		StartsAt         string
+		TileURL          string
+		Attribution      string
+		MaxZoom          int
+		InitialTelemetry *state.PublicTelemetry
 	}{
-		Token:       token,
-		Title:       title,
-		IsExpired:   isExpired,
-		IsPending:   isPending,
-		StartsAt:    startsAtFormatted,
-		TileURL:     tileURL,
-		Attribution: attribution,
-		MaxZoom:     maxZoom,
+		Token:            token,
+		Title:            title,
+		IsExpired:        isExpired,
+		IsPending:        isPending,
+		StartsAt:         startsAtFormatted,
+		TileURL:          tileURL,
+		Attribution:      attribution,
+		MaxZoom:          maxZoom,
+		InitialTelemetry: initialTelemetry,
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
