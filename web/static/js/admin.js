@@ -1,17 +1,41 @@
-// TeslaMap - Admin Dashboard Client with i18n
+// TeslaMap - Admin Dashboard Client with Material 3 Dialogs and i18n
 (function () {
   let selectedDuration = 240; // 4 hours in minutes default
   let cachedLinks = [];
   let cachedZones = [];
   let lastStatus = null;
 
+  // New Link Modal DOM
   const elModal = document.getElementById('new-link-modal');
   const elOpenModalBtn = document.getElementById('btn-open-create-modal');
   const elCancelModalBtn = document.getElementById('btn-cancel-create');
   const elSubmitModalBtn = document.getElementById('btn-submit-create');
+
+  // Safe Zone Modal DOM
+  const elZoneModal = document.getElementById('new-zone-modal');
+  const elOpenZoneModalBtn = document.getElementById('btn-open-create-zone-modal');
+  const elCancelZoneModalBtn = document.getElementById('btn-cancel-create-zone');
+  const elSubmitZoneModalBtn = document.getElementById('btn-submit-create-zone');
+  const elUseCurrentPosBtn = document.getElementById('btn-use-current-pos');
+  const inputZoneName = document.getElementById('input-zone-name');
+  const inputZoneLat = document.getElementById('input-zone-lat');
+  const inputZoneLon = document.getElementById('input-zone-lon');
+  const inputZoneRadius = document.getElementById('input-zone-radius');
+  let selectedZoneRadius = 400;
+
+  // Universal Confirmation Dialog DOM
+  const elConfirmModal = document.getElementById('confirm-dialog-modal');
+  const elConfirmTitle = document.getElementById('confirm-dialog-title');
+  const elConfirmDesc = document.getElementById('confirm-dialog-desc');
+  const elConfirmCancelBtn = document.getElementById('btn-confirm-cancel');
+  const elConfirmActionBtn = document.getElementById('btn-confirm-action');
+  let confirmResolver = null;
+
+  // Containers
   const elLinksContainer = document.getElementById('links-container');
   const elZonesContainer = document.getElementById('zones-container');
   const elToast = document.getElementById('toast');
+  const elTmActiveChip = document.getElementById('teslamate-active-chip');
 
   // Telemetry DOM elements
   const elCarState = document.getElementById('stat-state');
@@ -23,7 +47,42 @@
     if (!elToast) return;
     elToast.textContent = msg;
     elToast.classList.add('show');
-    setTimeout(() => elToast.classList.remove('show'), 3000);
+    setTimeout(() => elToast.classList.remove('show'), 3200);
+  }
+
+  // Material 3 Confirmation Dialog Promise
+  function confirmM3({ title, message, confirmText, isDanger = true }) {
+    return new Promise((resolve) => {
+      confirmResolver = resolve;
+      if (elConfirmTitle) elConfirmTitle.textContent = title || I18n.t('confirm_btn');
+      if (elConfirmDesc) elConfirmDesc.textContent = message || '';
+      if (elConfirmActionBtn) {
+        elConfirmActionBtn.textContent = confirmText || I18n.t('confirm_btn');
+        elConfirmActionBtn.className = isDanger ? 'm3-button m3-button-danger-filled' : 'm3-button m3-button-tesla';
+      }
+      if (elConfirmModal) elConfirmModal.classList.add('open');
+    });
+  }
+
+  if (elConfirmCancelBtn) {
+    elConfirmCancelBtn.addEventListener('click', () => {
+      if (elConfirmModal) elConfirmModal.classList.remove('open');
+      if (confirmResolver) { confirmResolver(false); confirmResolver = null; }
+    });
+  }
+  if (elConfirmActionBtn) {
+    elConfirmActionBtn.addEventListener('click', () => {
+      if (elConfirmModal) elConfirmModal.classList.remove('open');
+      if (confirmResolver) { confirmResolver(true); confirmResolver = null; }
+    });
+  }
+  if (elConfirmModal) {
+    elConfirmModal.addEventListener('click', (e) => {
+      if (e.target === elConfirmModal) {
+        elConfirmModal.classList.remove('open');
+        if (confirmResolver) { confirmResolver(false); confirmResolver = null; }
+      }
+    });
   }
 
   async function fetchStatus() {
@@ -54,6 +113,17 @@
         elCarDest.textContent = data.route.destination + ' (' + Math.round(data.route.distance_to_arrival_km) + ' ' + I18n.t('km_unit') + ')';
       } else {
         elCarDest.textContent = I18n.t('none_free_nav');
+      }
+    }
+
+    // TeslaMate geofence active chip
+    if (elTmActiveChip) {
+      if (data.teslamate_geofence) {
+        elTmActiveChip.style.display = 'inline-block';
+        elTmActiveChip.innerHTML = `<span class="m3-chip m3-chip-success" style="font-size:12px;margin-top:6px;">${I18n.t('teslamate_in_geofence', { zone: escapeHtml(data.teslamate_geofence) })}</span>`;
+      } else {
+        elTmActiveChip.style.display = 'none';
+        elTmActiveChip.innerHTML = '';
       }
     }
   }
@@ -104,30 +174,32 @@
       }
 
       return `
-        <div class="link-card ${isExpired ? 'expired' : ''}">
-          <div class="link-card-main">
-            <div class="link-card-title">
-              <span>${escapeHtml(link.label || 'Share link')}</span>
+        <div class="m3-card link-item" style="opacity: ${isExpired ? '0.6' : '1'}">
+          <div class="link-header">
+            <div>
+              <span class="link-label">${escapeHtml(link.label)}</span>
               ${statusBadge}
             </div>
-            <div class="link-card-meta">
-              <span>⏱ ${expText}</span>
-              <span>👁 ${link.view_count || 0} ${I18n.t('views')}</span>
-              <span style="font-family:monospace;font-size:12px;opacity:0.8;">${link.token}</span>
+            <div class="link-actions">
+              ${!isExpired ? `
+                <button class="m3-button m3-button-text" onclick="TeslaAdmin.copyLink('${fullUrl}')">
+                  ${I18n.t('copy_url')}
+                </button>
+                <button class="m3-button m3-button-text m3-button-danger" onclick="TeslaAdmin.revokeLink(${link.id})">
+                  ${I18n.t('revoke')}
+                </button>
+              ` : `
+                <button class="m3-button m3-button-text m3-button-danger" onclick="TeslaAdmin.deleteLink(${link.id})">
+                  ${I18n.t('delete')}
+                </button>
+              `}
             </div>
           </div>
-          <div class="link-card-actions">
-            <button class="m3-button m3-button-filled" onclick="TeslaAdmin.copyLink('${fullUrl}')">
-              ${I18n.t('copy_url')}
-            </button>
-            ${!isExpired ? `
-              <button class="m3-button m3-button-outlined" onclick="TeslaAdmin.revokeLink(${link.id})">
-                ${I18n.t('revoke')}
-              </button>
-            ` : ''}
-            <button class="m3-button m3-button-text m3-button-danger" onclick="TeslaAdmin.deleteLink(${link.id})">
-              ${I18n.t('delete')}
-            </button>
+          <div class="link-meta">
+            <span>🕒 ${expText}</span>
+            <span>👁 ${link.view_count || 0} ${I18n.t('views')}</span>
+            ${link.show_speed ? `<span>⚡ ${I18n.t('speed')}</span>` : ''}
+            ${link.show_battery ? `<span>🔋 ${I18n.t('battery')}</span>` : ''}
           </div>
         </div>
       `;
@@ -173,7 +245,7 @@
     });
   }
 
-  // Modal setup
+  // --- Modal: Create Link ---
   let currentMode = 'duration'; // 'duration' | 'slot'
   const tabDuration = document.getElementById('tab-mode-duration');
   const tabSlot = document.getElementById('tab-mode-slot');
@@ -195,7 +267,6 @@
       secDuration.style.display = 'none';
       secSlot.style.display = 'block';
 
-      // Pre-fill datetime inputs if empty
       if (!inputStartsAt.value) {
         const d1 = new Date();
         d1.setMinutes(Math.ceil(d1.getMinutes() / 15) * 15, 0, 0);
@@ -224,11 +295,16 @@
   if (elCancelModalBtn) {
     elCancelModalBtn.addEventListener('click', () => elModal.classList.remove('open'));
   }
+  if (elModal) {
+    elModal.addEventListener('click', (e) => {
+      if (e.target === elModal) elModal.classList.remove('open');
+    });
+  }
 
-  // Preset button handling
-  document.querySelectorAll('.preset-btn').forEach(btn => {
+  // Link preset buttons
+  document.querySelectorAll('#section-duration .preset-btn').forEach(btn => {
     btn.addEventListener('click', function () {
-      document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('#section-duration .preset-btn').forEach(b => b.classList.remove('active'));
       this.classList.add('active');
       selectedDuration = parseInt(this.getAttribute('data-mins'), 10);
     });
@@ -252,11 +328,11 @@
         payload.duration_minutes = selectedDuration;
       } else {
         if (!inputStartsAt.value || !inputExpiresAt.value) {
-          alert(I18n.getLang() === 'fr' ? "Veuillez sélectionner l'heure de début et l'heure de fin du créneau." : "Please select start and end time for the slot.");
+          showToast(I18n.getLang() === 'fr' ? "Veuillez sélectionner l'heure de début et de fin du créneau." : "Please select start and end time for the slot.");
           return;
         }
         if (new Date(inputExpiresAt.value) <= new Date(inputStartsAt.value)) {
-          alert(I18n.getLang() === 'fr' ? "L'heure de fin doit être postérieure à l'heure de début." : "End time must be after start time.");
+          showToast(I18n.getLang() === 'fr' ? "L'heure de fin doit être postérieure à l'heure de début." : "End time must be after start time.");
           return;
         }
         payload.starts_at = inputStartsAt.value;
@@ -274,10 +350,106 @@
           showToast(I18n.t('link_created'));
           loadLinks();
         } else {
-          alert("Error creating link");
+          showToast(I18n.getLang() === 'fr' ? "Erreur lors de la création du lien." : "Error creating share link.");
         }
       } catch (e) {
         console.error("Create link error", e);
+      }
+    });
+  }
+
+  // --- Modal: Create Safe Zone ---
+  document.querySelectorAll('.zone-radius-btn').forEach(btn => {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.zone-radius-btn').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      selectedZoneRadius = parseInt(this.getAttribute('data-radius'), 10);
+      if (inputZoneRadius) inputZoneRadius.value = selectedZoneRadius;
+    });
+  });
+
+  if (inputZoneRadius) {
+    inputZoneRadius.addEventListener('input', function () {
+      selectedZoneRadius = parseInt(this.value, 10) || 400;
+      document.querySelectorAll('.zone-radius-btn').forEach(b => {
+        b.classList.toggle('active', parseInt(b.getAttribute('data-radius'), 10) === selectedZoneRadius);
+      });
+    });
+  }
+
+  if (elOpenZoneModalBtn) {
+    elOpenZoneModalBtn.addEventListener('click', () => {
+      if (inputZoneName) inputZoneName.value = '';
+      if (inputZoneLat) {
+        inputZoneLat.value = (lastStatus && lastStatus.latitude) ? lastStatus.latitude.toFixed(6) : '';
+      }
+      if (inputZoneLon) {
+        inputZoneLon.value = (lastStatus && lastStatus.longitude) ? lastStatus.longitude.toFixed(6) : '';
+      }
+      if (inputZoneRadius) inputZoneRadius.value = '400';
+      selectedZoneRadius = 400;
+      document.querySelectorAll('.zone-radius-btn').forEach(b => {
+        b.classList.toggle('active', b.getAttribute('data-radius') === '400');
+      });
+      if (elZoneModal) elZoneModal.classList.add('open');
+    });
+  }
+
+  if (elCancelZoneModalBtn) {
+    elCancelZoneModalBtn.addEventListener('click', () => {
+      if (elZoneModal) elZoneModal.classList.remove('open');
+    });
+  }
+
+  if (elZoneModal) {
+    elZoneModal.addEventListener('click', (e) => {
+      if (e.target === elZoneModal) elZoneModal.classList.remove('open');
+    });
+  }
+
+  if (elUseCurrentPosBtn) {
+    elUseCurrentPosBtn.addEventListener('click', () => {
+      if (lastStatus && lastStatus.latitude && lastStatus.longitude) {
+        if (inputZoneLat) inputZoneLat.value = lastStatus.latitude.toFixed(6);
+        if (inputZoneLon) inputZoneLon.value = lastStatus.longitude.toFixed(6);
+        showToast(I18n.t('pos_fetched'));
+      } else {
+        showToast(I18n.t('no_car_pos'));
+      }
+    });
+  }
+
+  if (elSubmitZoneModalBtn) {
+    elSubmitZoneModalBtn.addEventListener('click', async () => {
+      const name = inputZoneName ? inputZoneName.value.trim() : '';
+      const lat = inputZoneLat ? parseFloat(inputZoneLat.value) : NaN;
+      const lon = inputZoneLon ? parseFloat(inputZoneLon.value) : NaN;
+      const radius = inputZoneRadius ? (parseFloat(inputZoneRadius.value) || selectedZoneRadius) : selectedZoneRadius;
+
+      if (!name || isNaN(lat) || isNaN(lon)) {
+        showToast(I18n.t('err_zone_fields'));
+        return;
+      }
+      if (isNaN(radius) || radius <= 0) {
+        showToast(I18n.t('err_zone_gps'));
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/admin/zones', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, latitude: lat, longitude: lon, radius_meters: radius })
+        });
+        if (res.ok) {
+          if (elZoneModal) elZoneModal.classList.remove('open');
+          showToast(I18n.t('zone_saved'));
+          loadZones();
+        } else {
+          showToast(I18n.t('err_zone_gps'));
+        }
+      } catch (e) {
+        console.error("Save zone error", e);
       }
     });
   }
@@ -297,43 +469,39 @@
       });
     },
     revokeLink: async function (id) {
-      const confirmMsg = I18n.getLang() === 'fr' ? "Voulez-vous révoquer ce lien immédiatement ?" : "Do you want to revoke this link immediately?";
-      if (!confirm(confirmMsg)) return;
+      const ok = await confirmM3({
+        title: I18n.t('confirm_revoke_title'),
+        message: I18n.t('confirm_revoke_desc'),
+        confirmText: I18n.t('revoke'),
+        isDanger: true
+      });
+      if (!ok) return;
       await fetch('/api/admin/links/' + id + '/revoke', { method: 'POST' });
       showToast(I18n.t('link_revoked'));
       loadLinks();
     },
     deleteLink: async function (id) {
-      const confirmMsg = I18n.getLang() === 'fr' ? "Supprimer définitivement ce lien ?" : "Permanently delete this link?";
-      if (!confirm(confirmMsg)) return;
+      const ok = await confirmM3({
+        title: I18n.t('confirm_delete_link_title'),
+        message: I18n.t('confirm_delete_link_desc'),
+        confirmText: I18n.t('delete'),
+        isDanger: true
+      });
+      if (!ok) return;
       await fetch('/api/admin/links/' + id, { method: 'DELETE' });
       showToast(I18n.t('link_deleted'));
       loadLinks();
     },
     deleteZone: async function (id) {
-      const confirmMsg = I18n.getLang() === 'fr' ? "Supprimer cette zone protégée ?" : "Delete this protected zone?";
-      if (!confirm(confirmMsg)) return;
+      const ok = await confirmM3({
+        title: I18n.t('confirm_delete_zone_title'),
+        message: I18n.t('confirm_delete_zone_desc'),
+        confirmText: I18n.t('delete'),
+        isDanger: true
+      });
+      if (!ok) return;
       await fetch('/api/admin/zones/' + id, { method: 'DELETE' });
       showToast(I18n.t('zone_deleted'));
-      loadZones();
-    },
-    createZone: async function () {
-      const isFr = I18n.getLang() === 'fr';
-      const name = prompt(isFr ? "Nom de la zone (ex: Domicile, Travail) :" : "Zone name (e.g. Home, Office):");
-      if (!name) return;
-      const lat = parseFloat(prompt(isFr ? "Latitude (ex: 48.8584) :" : "Latitude (e.g. 48.8584):"));
-      const lon = parseFloat(prompt(isFr ? "Longitude (ex: 2.2945) :" : "Longitude (e.g. 2.2945):"));
-      const radius = parseFloat(prompt(isFr ? "Rayon en mètres (ex: 400) :" : "Radius in meters (e.g. 400):", "400"));
-      if (isNaN(lat) || isNaN(lon) || isNaN(radius)) {
-        alert(isFr ? "Valeurs GPS ou rayon invalides" : "Invalid GPS or radius values");
-        return;
-      }
-      await fetch('/api/admin/zones', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, latitude: lat, longitude: lon, radius_meters: radius })
-      });
-      showToast(I18n.t('zone_saved'));
       loadZones();
     },
     logout: async function () {

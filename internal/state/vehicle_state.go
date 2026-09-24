@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"math"
+	"strings"
 	"sync"
 	"time"
 
@@ -25,13 +26,14 @@ type ActiveRoute struct {
 }
 
 type VehicleState struct {
-	State        string    `json:"state"` // "driving", "parked", "charging", "asleep", etc.
-	Latitude     float64   `json:"latitude"`
-	Longitude    float64   `json:"longitude"`
-	Heading      float64   `json:"heading"`
-	Speed        float64   `json:"speed"` // km/h
-	BatteryLevel float64   `json:"battery_level"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	State             string    `json:"state"` // "driving", "parked", "charging", "asleep", etc.
+	Latitude          float64   `json:"latitude"`
+	Longitude         float64   `json:"longitude"`
+	Heading           float64   `json:"heading"`
+	Speed             float64   `json:"speed"` // km/h
+	BatteryLevel      float64   `json:"battery_level"`
+	TeslaMateGeofence string    `json:"teslamate_geofence,omitempty"`
+	UpdatedAt         time.Time `json:"updated_at"`
 
 	HasActiveRoute bool         `json:"has_active_route"`
 	Route          *ActiveRoute `json:"route,omitempty"`
@@ -220,6 +222,14 @@ func (sm *StateManager) UpdateBattery(batteryLevel float64) {
 	sm.notifySubscribers()
 }
 
+func (sm *StateManager) UpdateTeslaMateGeofence(name string) {
+	sm.mu.Lock()
+	sm.state.TeslaMateGeofence = strings.TrimSpace(name)
+	sm.state.UpdatedAt = time.Now()
+	sm.mu.Unlock()
+	sm.notifySubscribers()
+}
+
 func (sm *StateManager) UpdateState(vehicleState string) {
 	sm.mu.Lock()
 	prev := sm.state.State
@@ -383,25 +393,32 @@ func (sm *StateManager) GetPublicTelemetry(link *database.SharedLink) PublicTele
 
 	geoResult := geofence.CheckSafeZones(st.Latitude, st.Longitude, safeZones)
 
+	inTeslaMateGeofence := st.TeslaMateGeofence != ""
+	inSafeZone := geoResult.IsInsideSafeZone || inTeslaMateGeofence
+	zoneName := geoResult.ZoneName
+	if zoneName == "" && inTeslaMateGeofence {
+		zoneName = st.TeslaMateGeofence
+	}
+
 	now := time.Now()
 	res := PublicTelemetry{
 		State:          st.State,
 		Heading:        st.Heading,
-		InSafeZone:     geoResult.IsInsideSafeZone,
-		SafeZoneName:   geoResult.ZoneName,
+		InSafeZone:     inSafeZone,
+		SafeZoneName:   zoneName,
 		HasActiveRoute: st.HasActiveRoute,
 		UpdatedAt:      st.UpdatedAt.Format(time.RFC3339),
 	}
 
-	// Geofence obfuscation: if inside a safe zone, omit precise lat/lon
-	if !geoResult.IsInsideSafeZone {
+	// Geofence obfuscation: if inside a safe zone or TeslaMate geofence, omit precise lat/lon
+	if !inSafeZone {
 		lat := st.Latitude
 		lon := st.Longitude
 		res.Latitude = &lat
 		res.Longitude = &lon
 	}
 
-	if link.ShowSpeed && !geoResult.IsInsideSafeZone {
+	if link.ShowSpeed && !inSafeZone {
 		spd := st.Speed
 		res.Speed = &spd
 	}

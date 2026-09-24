@@ -105,14 +105,28 @@
           </svg>
           <span data-i18n="safe_zones_title">Zones protégées (Geofencing)</span>
         </h2>
-        <button class="m3-button m3-button-outlined" onclick="TeslaAdmin.createZone()" data-i18n="add_zone_btn">
+        <button id="btn-open-create-zone-modal" class="m3-button m3-button-outlined" data-i18n="add_zone_btn">
           + Ajouter une zone
         </button>
       </div>
 
+      <!-- TeslaMate Geofences Sync Notice -->
+      <div style="display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: var(--md-shape-sm); margin-bottom: 16px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" style="flex-shrink: 0; margin-top: 1px;">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="16" x2="12" y2="12"></line>
+          <line x1="12" y1="8" x2="12.01" y2="8"></line>
+        </svg>
+        <div style="font-size: 13px; color: var(--md-sys-color-on-surface); line-height: 1.45;">
+          <strong data-i18n="teslamate_sync_title">Synchronisation TeslaMate active :</strong>
+          <span data-i18n="teslamate_sync_desc">Toutes vos géofences créées dans TeslaMate (Domicile, Travail, etc.) sont automatiquement reconnues et protégées en direct via MQTT, sans aucune saisie manuelle.</span>
+          <div id="teslamate-active-chip" style="margin-top: 8px; display: none;"></div>
+        </div>
+      </div>
+
       <div class="m3-card">
         <p style="font-size: 13px; color: var(--md-sys-color-on-surface-variant); margin-bottom: 16px;" data-i18n="safe_zones_desc">
-          Lorsque votre véhicule se trouve dans l'une de ces zones, sa position exacte et sa vitesse sont masquées sur tous les liens partagés.
+          Zones supplémentaires personnalisées enregistrées dans TeslaMap :
         </p>
         <div id="zones-container">
           <!-- Rendered via JS -->
@@ -208,6 +222,66 @@
       <div class="m3-dialog-actions">
         <button id="btn-cancel-create" class="m3-button m3-button-text" data-i18n="cancel">Annuler</button>
         <button id="btn-submit-create" class="m3-button m3-button-tesla" data-i18n="create">Créer le lien</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Safe Zone Modal Dialog -->
+  <div class="m3-dialog-backdrop" id="new-zone-modal">
+    <div class="m3-dialog">
+      <h3 class="m3-dialog-title" data-i18n="create_zone_title">Ajouter une zone protégée</h3>
+      <p style="font-size: 13px; color: var(--md-sys-color-on-surface-variant); margin-bottom: 20px;" data-i18n="create_zone_subtitle">
+        Masque automatiquement la position exacte et la vitesse lorsque la voiture est dans cette zone.
+      </p>
+
+      <div class="m3-field">
+        <label for="input-zone-name" data-i18n="zone_name_label">Nom de la zone</label>
+        <input type="text" id="input-zone-name" class="m3-input" placeholder="Ex: Domicile, Bureau, Famille...">
+      </div>
+
+      <div style="display: flex; gap: 12px; margin-bottom: 8px;">
+        <div class="m3-field" style="flex: 1; margin-bottom: 0;">
+          <label for="input-zone-lat">Latitude</label>
+          <input type="number" step="any" id="input-zone-lat" class="m3-input" placeholder="48.8584">
+        </div>
+        <div class="m3-field" style="flex: 1; margin-bottom: 0;">
+          <label for="input-zone-lon">Longitude</label>
+          <input type="number" step="any" id="input-zone-lon" class="m3-input" placeholder="2.2945">
+        </div>
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <button type="button" id="btn-use-current-pos" class="m3-button m3-button-outlined" style="width: 100%; height: 38px; font-size: 13px;" data-i18n="use_current_pos_btn">
+          📍 Utiliser la position actuelle du véhicule
+        </button>
+      </div>
+
+      <div class="m3-field">
+        <label for="input-zone-radius" data-i18n="zone_radius_label">Rayon de protection (mètres)</label>
+        <input type="number" id="input-zone-radius" class="m3-input" value="400" min="50" step="50">
+      </div>
+      <div class="preset-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 24px;">
+        <button type="button" class="preset-btn zone-radius-btn" data-radius="200">200m</button>
+        <button type="button" class="preset-btn zone-radius-btn active" data-radius="400">400m</button>
+        <button type="button" class="preset-btn zone-radius-btn" data-radius="800">800m</button>
+        <button type="button" class="preset-btn zone-radius-btn" data-radius="1500">1.5km</button>
+      </div>
+
+      <div class="m3-dialog-actions">
+        <button type="button" id="btn-cancel-create-zone" class="m3-button m3-button-text" data-i18n="cancel">Annuler</button>
+        <button type="button" id="btn-submit-create-zone" class="m3-button m3-button-tesla" data-i18n="save_zone_btn">Enregistrer la zone</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Universal Confirmation Dialog -->
+  <div class="m3-dialog-backdrop" id="confirm-dialog-modal">
+    <div class="m3-dialog" style="max-width: 440px;">
+      <h3 class="m3-dialog-title" id="confirm-dialog-title">Confirmation</h3>
+      <p id="confirm-dialog-desc" style="font-size: 14px; color: var(--md-sys-color-on-surface-variant); margin-bottom: 24px; line-height: 1.5;"></p>
+      <div class="m3-dialog-actions">
+        <button type="button" id="btn-confirm-cancel" class="m3-button m3-button-text" data-i18n="cancel">Annuler</button>
+        <button type="button" id="btn-confirm-action" class="m3-button m3-button-danger-filled">Confirmer</button>
       </div>
     </div>
   </div>

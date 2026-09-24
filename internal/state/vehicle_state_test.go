@@ -81,6 +81,46 @@ func TestSafeZoneMasking(t *testing.T) {
 	}
 }
 
+func TestTeslaMateGeofenceMasking(t *testing.T) {
+	tmpDir := t.TempDir()
+	db, err := database.Open(filepath.Join(tmpDir, "test.db"))
+	if err != nil {
+		t.Fatalf("failed to open db: %v", err)
+	}
+	defer db.Close()
+
+	sm := NewStateManager(nil, db)
+	link, _ := db.CreateSharedLink("Test TM Geofence", nil, nil, false, true, true)
+
+	// 1. Car is driving and receives TeslaMate geofence "Maison" via MQTT
+	sm.UpdateLocation(48.8584, 2.2945, 180, 50)
+	sm.UpdateTeslaMateGeofence("Maison")
+
+	telem := sm.GetPublicTelemetry(link)
+	if !telem.InSafeZone {
+		t.Errorf("expected vehicle to be in safe zone when TeslaMate geofence is active")
+	}
+	if telem.SafeZoneName != "Maison" {
+		t.Errorf("expected SafeZoneName 'Maison', got '%s'", telem.SafeZoneName)
+	}
+	if telem.Latitude != nil || telem.Longitude != nil {
+		t.Errorf("expected coordinates to be nil/masked inside TeslaMate geofence")
+	}
+	if telem.Speed != nil {
+		t.Errorf("expected speed to be nil/masked inside TeslaMate geofence")
+	}
+
+	// 2. Car leaves TeslaMate geofence (TeslaMate sends empty string "")
+	sm.UpdateTeslaMateGeofence("")
+	telem = sm.GetPublicTelemetry(link)
+	if telem.InSafeZone {
+		t.Errorf("expected vehicle to no longer be in safe zone")
+	}
+	if telem.Latitude == nil || telem.Longitude == nil {
+		t.Errorf("expected coordinates to be visible outside geofence")
+	}
+}
+
 func TestAutoExpire_ParkedMidTripDoesNotExpire(t *testing.T) {
 	tmpDir := t.TempDir()
 	db, err := database.Open(filepath.Join(tmpDir, "test.db"))

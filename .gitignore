@@ -21,3 +21,5 @@ data/
 *.swo
 .DS_Store
 Thumbs.db
+.env
+

@@ -110,6 +110,8 @@ func (s *Subscriber) handleMessage(client paho.Client, msg paho.Message) {
 		}
 	case "state":
 		s.stateManager.UpdateState(payload)
+	case "geofence":
+		s.stateManager.UpdateTeslaMateGeofence(payload)
 	case "location":
 		// Support JSON location payload if published
 		var loc struct {
