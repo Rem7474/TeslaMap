@@ -85,6 +85,7 @@ type StateManager struct {
 	parkGraceTimerMu  sync.Mutex
 	parkGraceDuration time.Duration
 	traveledPoints    []TraveledPoint
+	lastRouteCalc     time.Time
 }
 
 func NewStateManager(r routing.Router, db *database.DB) *StateManager {
@@ -198,12 +199,16 @@ func (sm *StateManager) UpdateLocation(lat, lon, heading, speed float64) {
 	routeActive := sm.state.HasActiveRoute && sm.state.Route != nil
 	var destLat, destLon, distKm, mins float64
 	var hasRouteCoords bool
+	var isOffRoute bool
 	if routeActive {
 		destLat = sm.state.Route.Latitude
 		destLon = sm.state.Route.Longitude
 		distKm = sm.state.Route.DistanceToArrival
 		mins = sm.state.Route.MinutesToArrival
 		hasRouteCoords = len(sm.state.Route.Coordinates) > 0
+		if hasRouteCoords && speed > 10.0 {
+			isOffRoute = !isPointNearPolyline(lat, lon, sm.state.Route.Coordinates, 250.0)
+		}
 	}
 	currentState := sm.state.State
 
@@ -232,8 +237,12 @@ func (sm *StateManager) UpdateLocation(lat, lon, heading, speed float64) {
 	}
 	sm.mu.Unlock()
 
-	// If route is active, calculate routing polyline in background if missing
-	if routeActive && sm.router != nil && !hasRouteCoords {
+	// If route is active, calculate routing polyline if missing or if off-route (> 250m while driving)
+	shouldReroute := !hasRouteCoords || (isOffRoute && time.Since(sm.lastRouteCalc) >= 20*time.Second)
+	if routeActive && sm.router != nil && shouldReroute {
+		if isOffRoute {
+			log.Println("[StateManager] Vehicle deviated from planned route (> 250m, autoroute/nationale switch). Recalculating route...")
+		}
 		go sm.ensureRoutePolyline(lat, lon, destLat, destLon, distKm, mins)
 	}
 
@@ -361,12 +370,19 @@ func (sm *StateManager) UpdateActiveRoute(destination string, lat, lon, minutes,
 	isNewRoute := !sm.state.HasActiveRoute || sm.state.Route == nil || sm.state.Route.Destination != destination
 	initialDist := distance
 	var existingCoords [][]float64
+	var distanceJump bool
 
 	if isNewRoute {
 		sm.traveledPoints = nil
 	} else if sm.state.Route != nil {
 		initialDist = sm.state.Route.InitialDistance
 		existingCoords = sm.state.Route.Coordinates
+		if sm.state.Route.DistanceToArrival > 0 && distance > 0 {
+			diff := math.Abs(distance - sm.state.Route.DistanceToArrival)
+			if diff >= 3.0 {
+				distanceJump = true
+			}
+		}
 	}
 
 	if initialDist <= 0 || distance > initialDist {
@@ -390,7 +406,11 @@ func (sm *StateManager) UpdateActiveRoute(destination string, lat, lon, minutes,
 	carLon := sm.state.Longitude
 	sm.mu.Unlock()
 
-	if sm.router != nil && (carLat != 0 || carLon != 0) && (isNewRoute || len(existingCoords) == 0) {
+	shouldCalc := isNewRoute || len(existingCoords) == 0 || (distanceJump && time.Since(sm.lastRouteCalc) >= 20*time.Second)
+	if sm.router != nil && (carLat != 0 || carLon != 0) && shouldCalc {
+		if distanceJump {
+			log.Printf("[StateManager] Tesla reported significant distance change (rerouted by Tesla). Recalculating route polyline...\n")
+		}
 		go sm.ensureRoutePolyline(carLat, carLon, lat, lon, distance, minutes)
 	}
 
@@ -410,9 +430,31 @@ func (sm *StateManager) ensureRoutePolyline(startLat, startLon, destLat, destLon
 		if sm.state.Route != nil {
 			sm.state.Route.Coordinates = res.Coordinates
 		}
+		sm.lastRouteCalc = time.Now()
 		sm.mu.Unlock()
 		sm.notifySubscribers()
 	}
+}
+
+func isPointNearPolyline(lat, lon float64, coords [][]float64, maxDistanceMeters float64) bool {
+	if len(coords) == 0 {
+		return false
+	}
+	degThreshold := maxDistanceMeters / 111000.0
+	degThresholdSq := degThreshold * degThreshold
+	cosLat := math.Cos(lat * math.Pi / 180.0)
+
+	for _, pt := range coords {
+		if len(pt) < 2 {
+			continue
+		}
+		dLat := lat - pt[0]
+		dLon := (lon - pt[1]) * cosLat
+		if (dLat*dLat + dLon*dLon) <= degThresholdSq {
+			return true
+		}
+	}
+	return false
 }
 
 // GetPublicTelemetry formats the current state for a shared link recipient

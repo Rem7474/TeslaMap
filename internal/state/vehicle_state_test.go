@@ -303,4 +303,25 @@ func TestTraveledPathTrackingAndFiltering(t *testing.T) {
 	}
 }
 
+func TestIsPointNearPolyline(t *testing.T) {
+	coords := [][]float64{
+		{48.8584, 2.2945},
+		{48.8600, 2.2960},
+		{48.8650, 2.3000},
+	}
 
+	// Point close (< 50m)
+	if !isPointNearPolyline(48.8585, 2.2946, coords, 250.0) {
+		t.Errorf("expected point to be near polyline")
+	}
+
+	// Point far (> 500m)
+	if isPointNearPolyline(48.9000, 2.4000, coords, 250.0) {
+		t.Errorf("expected point to be far from polyline")
+	}
+
+	// Empty coords
+	if isPointNearPolyline(48.8584, 2.2945, nil, 250.0) {
+		t.Errorf("expected empty coords to return false")
+	}
+}
