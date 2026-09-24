@@ -22,7 +22,7 @@
 <body class="{{if .IsEmbed}}embed-mode{{end}}">
 
   <!-- Floating Language Switcher -->
-  <button type="button" class="m3-chip" id="btn-lang-toggle" style="position: fixed; top: 16px; right: 16px; z-index: 2500; cursor: pointer; padding: 6px 12px; font-weight: 600; box-shadow: 0 4px 14px rgba(0,0,0,0.5); backdrop-filter: blur(8px); background: rgba(20,23,29,0.85); border: 1px solid var(--md-sys-color-outline-variant);" title="Switch Language">
+  <button type="button" class="m3-chip" id="btn-lang-toggle" style="position: fixed; top: max(16px, env(safe-area-inset-top, 16px)); right: max(16px, env(safe-area-inset-right, 16px)); z-index: 2500; cursor: pointer; padding: 6px 12px; font-weight: 600; box-shadow: 0 4px 14px rgba(0,0,0,0.5); backdrop-filter: blur(8px); background: rgba(20,23,29,0.85); border: 1px solid var(--md-sys-color-outline-variant);" title="Switch Language">
     🌐 <span id="lang-indicator">EN</span>
   </button>
 

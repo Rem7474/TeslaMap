@@ -1,11 +1,22 @@
 /* Live Map Styling */
+html, body {
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  position: fixed;
+  inset: 0;
+}
+
 #map {
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
   background-color: #0b0d11;
   position: absolute;
-  top: 0;
-  left: 0;
+  inset: 0;
   z-index: 1;
 }
 
@@ -91,15 +102,42 @@
     bottom: 0;
     left: 0;
     right: 0;
+    max-height: 80dvh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     border-radius: var(--md-shape-xl) var(--md-shape-xl) 0 0;
-    padding: 12px 20px 24px 20px;
+    padding: 10px 16px max(16px, env(safe-area-inset-bottom, 16px)) 16px;
   }
   .sheet-handle {
-    width: 36px;
+    width: 32px;
     height: 4px;
     background-color: var(--md-sys-color-outline);
     border-radius: var(--md-shape-full);
-    margin: 0 auto 12px auto;
+    margin: 0 auto 8px auto;
+  }
+  .telemetry-header {
+    margin-bottom: 6px;
+  }
+  .destination-title {
+    font-size: 15px;
+    max-width: 200px;
+  }
+  .metric-row {
+    grid-template-columns: repeat(auto-fit, minmax(58px, 1fr)) !important;
+    gap: 6px !important;
+    margin: 8px 0 !important;
+  }
+  .metric-box {
+    padding: 6px 4px !important;
+  }
+  .metric-value {
+    font-size: 16px !important;
+  }
+  .metric-label {
+    font-size: 10px !important;
+  }
+  .leaflet-control-zoom {
+    margin-bottom: calc(165px + env(safe-area-inset-bottom, 0px)) !important;
   }
 }
 
@@ -121,12 +159,12 @@
   max-width: 240px;
 }
 
-/* Metric Display */
+/* Metric Display - auto-fit to comfortably display 3 or 4 metrics on 1 single row */
 .metric-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin: 16px 0;
+  grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+  gap: 10px;
+  margin: 14px 0;
   text-align: center;
 }
 
@@ -156,7 +194,7 @@
 .recenter-bar-container {
   position: fixed;
   left: 50%;
-  bottom: 250px;
+  bottom: calc(165px + env(safe-area-inset-bottom, 0px));
   transform: translateX(-50%) translateY(14px);
   z-index: 1500;
   pointer-events: none;
@@ -253,8 +291,11 @@
     left: 0;
     right: 0;
     width: 100%;
+    max-height: 85dvh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     border-radius: var(--md-shape-xl) var(--md-shape-xl) 0 0;
-    padding: 20px 20px 32px 20px;
+    padding: 16px 16px max(24px, env(safe-area-inset-bottom, 24px)) 16px;
     text-align: left;
   }
 }
