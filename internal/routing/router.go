@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	"net/http"
 	"sync"
@@ -62,12 +63,20 @@ func (s *RoutingService) CalculateRoute(ctx context.Context, startLat, startLon,
 	case "openrouteservice":
 		if s.apiKey != "" {
 			res, err = s.routeOpenRouteService(ctx, startLat, startLon, endLat, endLon, targetDistanceKm, targetMinutes)
+			if err != nil {
+				log.Printf("[Router] OpenRouteService failed (%v), falling back to OSRM...\n", err)
+				res, err = s.routeOSRM(ctx, startLat, startLon, endLat, endLon, targetDistanceKm, targetMinutes)
+			}
 		} else {
 			res, err = s.routeOSRM(ctx, startLat, startLon, endLat, endLon, targetDistanceKm, targetMinutes)
 		}
 	case "mapbox":
 		if s.apiKey != "" {
 			res, err = s.routeMapbox(ctx, startLat, startLon, endLat, endLon, targetDistanceKm, targetMinutes)
+			if err != nil {
+				log.Printf("[Router] Mapbox failed (%v), falling back to OSRM...\n", err)
+				res, err = s.routeOSRM(ctx, startLat, startLon, endLat, endLon, targetDistanceKm, targetMinutes)
+			}
 		} else {
 			res, err = s.routeOSRM(ctx, startLat, startLon, endLat, endLon, targetDistanceKm, targetMinutes)
 		}
@@ -76,6 +85,7 @@ func (s *RoutingService) CalculateRoute(ctx context.Context, startLat, startLon,
 	}
 
 	if err != nil {
+		log.Printf("[Router] All routing providers failed (%v), falling back to straight line\n", err)
 		// Fallback to direct straight line if routing service fails
 		res = &RouteResult{
 			Coordinates: [][]float64{
@@ -226,7 +236,8 @@ func (s *RoutingService) routeOpenRouteService(ctx context.Context, startLat, st
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("openrouteservice status: %d", resp.StatusCode)
+		respBody, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("openrouteservice status %d: %s", resp.StatusCode, string(respBody))
 	}
 
 	var geojson struct {

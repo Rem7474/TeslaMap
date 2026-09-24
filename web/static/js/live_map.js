@@ -432,16 +432,33 @@
       if (map && carMarker && map.hasLayer(carMarker)) {
         map.removeLayer(carMarker);
       }
-      if (traveledLine && map.hasLayer(traveledLine)) {
-        map.removeLayer(traveledLine);
-      }
-      if (routeLine && map.hasLayer(routeLine)) {
-        map.removeLayer(routeLine);
-      }
-      fullRouteCoords = [];
-      lastRouteIdx = 0;
       if (elRecenterBar) elRecenterBar.classList.remove('visible');
       updateStatusChip(I18n.t('private_zone'), 'm3-chip-warning');
+
+      // Preserve and display historical traveled path outside safe zone
+      const serverCoords = data.traveled_coordinates || [];
+      if (serverCoords.length > 0) {
+        confirmedTraveledCoords = serverCoords;
+        if (!traveledLine) {
+          traveledLine = L.polyline(serverCoords, {
+            color: '#94a3b8',
+            weight: 5,
+            opacity: 0.65,
+            lineJoin: 'round',
+            lineCap: 'round'
+          }).addTo(map);
+        } else {
+          if (!map.hasLayer(traveledLine)) {
+            traveledLine.addTo(map);
+          }
+          traveledLine.setLatLngs(serverCoords);
+        }
+
+        if (firstFix && map) {
+          firstFix = false;
+          map.fitBounds(traveledLine.getBounds(), { padding: [50, 50], maxZoom: 15 });
+        }
+      }
     } else {
       if (elSafeZoneAlert) elSafeZoneAlert.style.display = 'none';
       if (data.latitude != null && data.longitude != null) {
@@ -523,7 +540,8 @@
           lastRouteIdx = 0;
         }
 
-        const remaining = getRemainingRoute(currentLatLng || fullRouteCoords[0], fullRouteCoords);
+        const refPos = currentLatLng || (confirmedTraveledCoords.length > 0 ? confirmedTraveledCoords[confirmedTraveledCoords.length - 1] : fullRouteCoords[0]);
+        const remaining = getRemainingRoute(refPos, fullRouteCoords);
         if (!routeLine) {
           routeLine = L.polyline(remaining, {
             color: '#3b82f6',

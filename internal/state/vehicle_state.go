@@ -206,7 +206,7 @@ func (sm *StateManager) TriggerRouteCalculation() {
 		distKm = sm.state.Route.DistanceToArrival
 		mins = sm.state.Route.MinutesToArrival
 		coords := sm.state.Route.Coordinates
-		if len(coords) == 0 {
+		if len(coords) <= 2 {
 			needsCalc = true
 		} else if carLat != 0 && carLon != 0 {
 			interval := sm.routeRecalcInterval
@@ -292,7 +292,7 @@ func (sm *StateManager) UpdateLocation(lat, lon, heading, speed float64) {
 		destLon = sm.state.Route.Longitude
 		distKm = sm.state.Route.DistanceToArrival
 		mins = sm.state.Route.MinutesToArrival
-		hasRouteCoords = len(sm.state.Route.Coordinates) > 0
+		hasRouteCoords = len(sm.state.Route.Coordinates) > 2
 		if hasRouteCoords && speed > 10.0 {
 			isOffRoute = !isPointNearPolyline(lat, lon, sm.state.Route.Coordinates, 250.0)
 		}
@@ -336,7 +336,7 @@ func (sm *StateManager) UpdateLocation(lat, lon, heading, speed float64) {
 
 	// If route is active, calculate routing polyline if missing or if off-route (> 250m while driving)
 	shouldReroute := !hasRouteCoords || (isOffRoute && time.Since(sm.lastRouteCalc) >= interval)
-	if routeActive && sm.router != nil && shouldReroute && sm.HasActiveViewers() {
+	if routeActive && sm.router != nil && shouldReroute && (sm.HasActiveViewers() || currentState == "driving") {
 		if isOffRoute {
 			log.Printf("[StateManager] Vehicle deviated from planned route (> 250m, autoroute/nationale switch, >= %v since last calc). Recalculating route...\n", interval)
 		}
@@ -507,6 +507,7 @@ func (sm *StateManager) UpdateActiveRoute(destination string, lat, lon, minutes,
 		UpdatedAt:         time.Now(),
 	}
 
+	currentState := sm.state.State
 	carLat := sm.state.Latitude
 	carLon := sm.state.Longitude
 	sm.mu.Unlock()
@@ -515,8 +516,8 @@ func (sm *StateManager) UpdateActiveRoute(destination string, lat, lon, minutes,
 	if interval <= 0 {
 		interval = 3 * time.Minute
 	}
-	shouldCalc := isNewRoute || len(existingCoords) == 0 || (distanceJump && time.Since(sm.lastRouteCalc) >= interval)
-	if sm.router != nil && (carLat != 0 || carLon != 0) && shouldCalc && sm.HasActiveViewers() {
+	shouldCalc := isNewRoute || len(existingCoords) <= 2 || (distanceJump && time.Since(sm.lastRouteCalc) >= interval)
+	if sm.router != nil && (carLat != 0 || carLon != 0) && shouldCalc && (sm.HasActiveViewers() || currentState == "driving") {
 		if distanceJump {
 			log.Printf("[StateManager] Tesla reported significant distance change (rerouted by Tesla, >= %v since last calc). Recalculating route polyline...\n", interval)
 		}
@@ -534,13 +535,18 @@ func (sm *StateManager) ensureRoutePolyline(startLat, startLon, destLat, destLon
 	defer cancel()
 
 	res, err := sm.router.CalculateRoute(ctx, startLat, startLon, destLat, destLon, targetDistanceKm, targetMinutes)
-	if err == nil && res != nil && len(res.Coordinates) > 0 {
+	if err != nil {
+		log.Printf("[StateManager] Route calculation error: %v\n", err)
+		return
+	}
+	if res != nil && len(res.Coordinates) > 0 {
 		sm.mu.Lock()
 		if sm.state.Route != nil {
 			sm.state.Route.Coordinates = res.Coordinates
 		}
 		sm.lastRouteCalc = time.Now()
 		sm.mu.Unlock()
+		log.Printf("[StateManager] Route polyline successfully calculated (%d points)\n", len(res.Coordinates))
 		sm.notifySubscribers()
 	}
 }
@@ -604,9 +610,11 @@ func (sm *StateManager) GetPublicTelemetry(link *database.SharedLink) PublicTele
 			continue
 		}
 		filteredPts = append(filteredPts, pt)
-		if !inSafeZone {
-			traveledCoords = append(traveledCoords, []float64{pt.Latitude, pt.Longitude})
-		}
+		traveledCoords = append(traveledCoords, []float64{pt.Latitude, pt.Longitude})
+	}
+
+	if len(traveledCoords) > 0 {
+		res.TraveledCoordinates = traveledCoords
 	}
 
 	// Geofence obfuscation: if inside a safe zone or TeslaMate geofence, omit precise lat/lon
@@ -615,9 +623,6 @@ func (sm *StateManager) GetPublicTelemetry(link *database.SharedLink) PublicTele
 		lon := st.Longitude
 		res.Latitude = &lat
 		res.Longitude = &lon
-		if len(traveledCoords) > 0 {
-			res.TraveledCoordinates = traveledCoords
-		}
 	}
 
 	// Calculate Trip Summary metrics

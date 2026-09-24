@@ -78,6 +78,42 @@ func TestSafeZoneMasking(t *testing.T) {
 	}
 }
 
+func TestSafeZonePreservesTraveledHistory(t *testing.T) {
+	tmpDir := t.TempDir()
+	db, err := database.Open(filepath.Join(tmpDir, "test.db"))
+	if err != nil {
+		t.Fatalf("failed to open db: %v", err)
+	}
+	defer db.Close()
+
+	// Safe zone at 48.8584, 2.2945 (radius 500m)
+	_, err = db.CreateSafeZone("Home", 48.8584, 2.2945, 500)
+	if err != nil {
+		t.Fatalf("failed to create safe zone: %v", err)
+	}
+
+	sm := NewStateManager(nil, db)
+	link, _ := db.CreateSharedLink("Test", nil, nil, false, true, true)
+
+	// Car drives outside safe zone (Auxerre, then Melun)
+	sm.UpdateLocation(47.79, 3.57, 180, 110)
+	sm.UpdateLocation(48.53, 2.65, 180, 110)
+
+	// Car enters safe zone (Home)
+	sm.UpdateLocation(48.8585, 2.2945, 180, 10)
+
+	telem := sm.GetPublicTelemetry(link)
+	if !telem.InSafeZone {
+		t.Fatalf("expected vehicle to be inside safe zone")
+	}
+	if telem.Latitude != nil || telem.Longitude != nil {
+		t.Errorf("expected current car position to be masked/nil")
+	}
+	if len(telem.TraveledCoordinates) != 2 {
+		t.Errorf("expected 2 traveled coordinates outside safe zone to be preserved, got %d", len(telem.TraveledCoordinates))
+	}
+}
+
 func TestTeslaMateGeofenceMasking(t *testing.T) {
 	tmpDir := t.TempDir()
 	db, err := database.Open(filepath.Join(tmpDir, "test.db"))
