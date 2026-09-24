@@ -1,3 +1,8 @@
+/* ========================================================================
+   TeslaMap - Material Design 3 Admin Stylesheet
+   ======================================================================== */
+
+/* Top App Bar */
 .admin-navbar {
   height: 64px;
   background-color: var(--md-sys-color-surface-container);
@@ -11,6 +16,7 @@
   z-index: 100;
   width: 100%;
   box-sizing: border-box;
+  box-shadow: var(--md-sys-elevation-1);
 }
 
 .brand-title {
@@ -18,7 +24,8 @@
   align-items: center;
   gap: 12px;
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 500;
+  letter-spacing: 0.15px;
   color: var(--md-sys-color-on-surface);
   text-decoration: none;
   flex-shrink: 0;
@@ -27,6 +34,7 @@
 .brand-badge {
   font-size: 11px;
   font-weight: 600;
+  letter-spacing: 0.5px;
   background: var(--md-sys-color-tesla-container);
   color: #ff8a8d;
   padding: 2px 8px;
@@ -42,10 +50,10 @@
 
 .lang-selector {
   display: flex;
-  gap: 4px;
+  gap: 2px;
   background: var(--md-sys-color-surface-container-high);
-  padding: 2px;
-  border-radius: var(--md-shape-sm);
+  padding: 3px;
+  border-radius: var(--md-shape-full);
   border: 1px solid var(--md-sys-color-outline-variant);
 }
 
@@ -57,7 +65,7 @@
   padding: 0 16px 80px 16px;
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 32px;
 }
 
 .section-header {
@@ -70,7 +78,9 @@
 
 .section-title {
   font-size: 18px;
-  font-weight: 600;
+  line-height: 24px;
+  font-weight: 500;
+  letter-spacing: 0.15px;
   color: var(--md-sys-color-on-surface);
   display: flex;
   align-items: center;
@@ -107,14 +117,17 @@
 
 .status-stat-label {
   font-size: 12px;
+  font-weight: 500;
   color: var(--md-sys-color-on-surface-variant);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .status-stat-val {
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 600;
+  letter-spacing: 0;
   color: #ffffff;
   word-break: break-word;
   overflow-wrap: anywhere;
@@ -150,12 +163,12 @@
   top: 10px;
   right: 10px;
   z-index: 500;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: rgba(18, 20, 26, 0.88);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  width: 36px;
+  height: 36px;
+  border-radius: var(--md-shape-sm);
+  background: rgba(20, 24, 32, 0.9);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.15);
   color: #ffffff;
   display: flex;
@@ -163,15 +176,15 @@
   justify-content: center;
   cursor: pointer;
   text-decoration: none;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-  transition: all 0.2s ease;
+  box-shadow: var(--md-sys-elevation-2);
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
 }
 
 .admin-map-expand-btn:hover {
-  background: rgba(35, 40, 52, 0.98);
-  border-color: rgba(255, 255, 255, 0.3);
-  color: #ffffff;
-  transform: scale(1.06);
+  background: rgba(35, 42, 56, 0.98);
+  border-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-primary);
+  transform: scale(1.05);
 }
 
 /* Link Cards List */
@@ -192,7 +205,7 @@
   border: 1px solid var(--md-sys-color-outline-variant);
   border-radius: var(--md-shape-lg);
   box-shadow: var(--md-sys-elevation-1);
-  transition: all 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.2, 0, 0, 1);
   min-width: 0;
   max-width: 100%;
   box-sizing: border-box;
@@ -204,7 +217,7 @@
 }
 
 .link-card.expired {
-  opacity: 0.6;
+  opacity: 0.65;
 }
 
 .link-card-main {
@@ -217,7 +230,9 @@
 
 .link-card-title {
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 500;
+  line-height: 24px;
+  letter-spacing: 0.15px;
   color: var(--md-sys-color-on-surface);
   display: flex;
   align-items: center;
@@ -251,7 +266,7 @@
   flex-wrap: wrap;
 }
 
-/* Preset buttons for TTL dialog */
+/* Preset buttons for TTL / Radius (M3 Filter Chip Style) */
 .preset-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -263,39 +278,50 @@
   height: 38px;
   border-radius: var(--md-shape-sm);
   background: var(--md-sys-color-surface-container);
-  border: 1px solid var(--md-sys-color-outline);
+  border: 1px solid var(--md-sys-color-outline-variant);
   color: var(--md-sys-color-on-surface);
+  font-family: inherit;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .preset-btn:hover {
-  border-color: var(--md-sys-color-primary);
+  border-color: var(--md-sys-color-outline);
+  background: var(--md-sys-color-surface-container-high);
 }
 
 .preset-btn.active {
   background: var(--md-sys-color-primary-container);
   border-color: var(--md-sys-color-primary);
   color: var(--md-sys-color-on-primary-container);
+  font-weight: 600;
 }
 
-/* Safe Zone tags */
+/* Safe Zone chips */
 .zone-chip {
   display: flex;
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 12px 18px;
+  padding: 14px 18px;
   background: var(--md-sys-color-surface-container-high);
   border: 1px solid var(--md-sys-color-outline-variant);
   border-radius: var(--md-shape-md);
   margin-bottom: 8px;
   box-sizing: border-box;
+  transition: all 0.2s ease;
 }
 
-/* Mobile Responsive Optimization (< 600px) */
+.zone-chip:hover {
+  border-color: var(--md-sys-color-outline);
+}
+
+/* Mobile Responsive (< 600px) */
 @media (max-width: 600px) {
   .admin-navbar {
     height: 56px;
@@ -332,7 +358,7 @@
   .admin-container {
     margin: 16px auto;
     padding: 0 12px 60px 12px;
-    gap: 20px;
+    gap: 24px;
   }
 
   .section-header {
@@ -401,7 +427,7 @@
   }
 
   .m3-dialog {
-    padding: 20px 14px;
+    padding: 20px 16px;
     margin: 0 8px;
   }
 

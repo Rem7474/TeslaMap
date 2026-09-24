@@ -209,31 +209,26 @@
               ${statusBadge}
             </div>
             <div class="link-card-meta">
-              <span>🕒 ${expText}</span>
-              <span>👁 ${link.view_count || 0} ${I18n.t('views')}</span>
-              ${link.show_speed ? `<span>⚡ ${I18n.t('speed')}</span>` : ''}
-              ${link.show_battery ? `<span>🔋 ${I18n.t('battery')}</span>` : ''}
+              <span><span class="material-symbols-outlined" style="font-size: 16px;">schedule</span> ${expText}</span>
+              <span><span class="material-symbols-outlined" style="font-size: 16px;">visibility</span> ${link.view_count || 0} ${I18n.t('views')}</span>
+              ${link.show_speed ? `<span><span class="material-symbols-outlined" style="font-size: 16px;">speed</span> ${I18n.t('speed')}</span>` : ''}
+              ${link.show_battery ? `<span><span class="material-symbols-outlined" style="font-size: 16px;">battery_charging_full</span> ${I18n.t('battery')}</span>` : ''}
             </div>
           </div>
           <div class="link-card-actions">
             ${!isExpired ? `
               <button class="m3-button m3-button-filled" onclick="TeslaAdmin.copyLink('${fullUrl}')">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                </svg>
-                ${I18n.t('copy_url')}
+                <span class="material-symbols-outlined" style="font-size: 18px;">content_copy</span>
+                <span>${I18n.t('copy_url')}</span>
               </button>
               <button class="m3-button m3-button-text m3-button-danger" onclick="TeslaAdmin.revokeLink(${link.id})">
-                ${I18n.t('revoke')}
+                <span class="material-symbols-outlined" style="font-size: 18px;">block</span>
+                <span>${I18n.t('revoke')}</span>
               </button>
             ` : `
               <button class="m3-button m3-button-text m3-button-danger" onclick="TeslaAdmin.deleteLink(${link.id})">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="3 6 5 6 21 6"></polyline>
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                </svg>
-                ${I18n.t('delete')}
+                <span class="material-symbols-outlined" style="font-size: 18px;">delete</span>
+                <span>${I18n.t('delete')}</span>
               </button>
             `}
           </div>
@@ -262,14 +257,18 @@
 
     elZonesContainer.innerHTML = zones.map(z => `
       <div class="zone-chip">
-        <div>
-          <strong>${escapeHtml(z.name)}</strong>
-          <span style="font-size:12px;color:var(--md-sys-color-on-surface-variant);margin-left:8px;">
-            (${I18n.t('radius')}: ${z.radius_meters}m • ${I18n.t('gps')}: ${z.latitude.toFixed(4)}, ${z.longitude.toFixed(4)})
-          </span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="material-symbols-outlined" style="font-size:20px;color:var(--md-sys-color-primary);">shield</span>
+          <div>
+            <strong>${escapeHtml(z.name)}</strong>
+            <span style="font-size:12px;color:var(--md-sys-color-on-surface-variant);margin-left:8px;">
+              (${I18n.t('radius')}: ${z.radius_meters}m • ${I18n.t('gps')}: ${z.latitude.toFixed(4)}, ${z.longitude.toFixed(4)})
+            </span>
+          </div>
         </div>
         <button class="m3-button m3-button-text m3-button-danger" onclick="TeslaAdmin.deleteZone(${z.id})">
-          ${I18n.t('delete')}
+          <span class="material-symbols-outlined" style="font-size: 18px;">delete</span>
+          <span>${I18n.t('delete')}</span>
         </button>
       </div>
     `).join('');

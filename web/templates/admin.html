@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TeslaMap Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap">
   <link rel="stylesheet" href="/static/css/material3.css">
   <link rel="stylesheet" href="/static/css/admin.css">
   <script>
@@ -36,29 +39,24 @@
 
       <!-- Language Selector -->
       <div class="lang-selector">
-        <button type="button" class="lang-toggle-btn m3-button m3-button-text" data-lang="fr" onclick="I18n.setLang('fr')" style="height: 28px; padding: 0 8px; font-size: 11px; font-weight: 700; border-radius: var(--md-shape-xs);">FR</button>
-        <button type="button" class="lang-toggle-btn m3-button m3-button-text" data-lang="en" onclick="I18n.setLang('en')" style="height: 28px; padding: 0 8px; font-size: 11px; font-weight: 700; border-radius: var(--md-shape-xs);">EN</button>
+        <button type="button" class="lang-toggle-btn m3-button m3-button-text" data-lang="fr" onclick="I18n.setLang('fr')" style="height: 28px; padding: 0 10px; font-size: 11px; font-weight: 700; border-radius: var(--md-shape-full);">FR</button>
+        <button type="button" class="lang-toggle-btn m3-button m3-button-text" data-lang="en" onclick="I18n.setLang('en')" style="height: 28px; padding: 0 10px; font-size: 11px; font-weight: 700; border-radius: var(--md-shape-full);">EN</button>
       </div>
 
-      <button class="m3-button m3-button-text navbar-logout-btn" onclick="TeslaAdmin.logout()" data-i18n="logout">
-        Déconnexion
+      <button class="m3-button m3-button-text navbar-logout-btn" onclick="TeslaAdmin.logout()" data-i18n="logout" style="gap: 4px;">
+        <span class="material-symbols-outlined" style="font-size: 18px;">logout</span>
+        <span class="navbar-chip-text">Déconnexion</span>
       </button>
     </div>
   </header>
 
   <main class="admin-container">
     
-    <!-- Vehicle Live Status Card -->
     <!-- Vehicle Live Status & Mini-Map -->
-    <section class="m3-card" style="margin-bottom: 24px;">
+    <section class="m3-card" style="margin-bottom: 8px;">
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
         <h2 class="section-title" style="margin: 0;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="1" y="3" width="15" height="13"></rect>
-            <polygon points="16 8 20 8 23 11 23 16 16 16 8"></polygon>
-            <circle cx="5.5" cy="18.5" r="2.5"></circle>
-            <circle cx="18.5" cy="18.5" r="2.5"></circle>
-          </svg>
+          <span class="material-symbols-outlined" style="color: var(--md-sys-color-primary);">directions_car</span>
           <span data-i18n="car_status_title">État du véhicule en direct</span>
         </h2>
         <span id="stat-state" class="m3-chip" data-i18n="connecting">Connexion...</span>
@@ -83,9 +81,7 @@
         <div class="admin-map-wrapper">
           <iframe src="/admin/map?embed=1" id="admin-map-iframe" class="admin-map-frame" title="Carte Tesla Live"></iframe>
           <a href="/admin/map" target="_blank" class="admin-map-expand-btn" title="Ouvrir la carte en plein écran">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path>
-            </svg>
+            <span class="material-symbols-outlined" style="font-size: 20px;">open_in_new</span>
           </a>
         </div>
       </div>
@@ -95,17 +91,12 @@
     <section>
       <div class="section-header">
         <h2 class="section-title">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="18" cy="5" r="3"></circle>
-            <circle cx="6" cy="12" r="3"></circle>
-            <circle cx="18" cy="19" r="3"></circle>
-            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-          </svg>
+          <span class="material-symbols-outlined" style="color: var(--md-sys-color-primary);">share</span>
           <span data-i18n="ephemeral_links">Liens de partage éphémères</span>
         </h2>
         <button id="btn-open-create-modal" class="m3-button m3-button-tesla" data-i18n="new_link_btn">
-          + Nouveau lien
+          <span class="material-symbols-outlined" style="font-size: 18px;">add</span>
+          <span>Nouveau lien</span>
         </button>
       </div>
 
@@ -119,24 +110,19 @@
     <section>
       <div class="section-header">
         <h2 class="section-title">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-          </svg>
+          <span class="material-symbols-outlined" style="color: var(--md-sys-color-primary);">shield</span>
           <span data-i18n="safe_zones_title">Zones protégées (Geofencing)</span>
         </h2>
         <button id="btn-open-create-zone-modal" class="m3-button m3-button-outlined" data-i18n="add_zone_btn">
-          + Ajouter une zone
+          <span class="material-symbols-outlined" style="font-size: 18px;">add_location_alt</span>
+          <span>Ajouter une zone</span>
         </button>
       </div>
 
       <!-- TeslaMate Geofences Sync Notice -->
-      <div style="display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: var(--md-shape-sm); margin-bottom: 16px;">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" style="flex-shrink: 0; margin-top: 1px;">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="12" y1="16" x2="12" y2="12"></line>
-          <line x1="12" y1="8" x2="12.01" y2="8"></line>
-        </svg>
-        <div style="font-size: 13px; color: var(--md-sys-color-on-surface); line-height: 1.45;">
+      <div style="display: flex; align-items: flex-start; gap: 12px; padding: 14px 18px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: var(--md-shape-md); margin-bottom: 16px;">
+        <span class="material-symbols-outlined" style="color: #60a5fa; flex-shrink: 0; margin-top: 1px;">sync</span>
+        <div style="font-size: 13px; color: var(--md-sys-color-on-surface); line-height: 1.5;">
           <strong data-i18n="teslamate_sync_title">Synchronisation TeslaMate active :</strong>
           <span data-i18n="teslamate_sync_desc">Toutes vos géofences créées dans TeslaMate (Domicile, Travail, etc.) sont automatiquement reconnues et protégées en direct via MQTT, sans aucune saisie manuelle.</span>
           <div id="teslamate-active-chip" style="margin-top: 8px; display: none;"></div>
@@ -170,10 +156,10 @@
 
       <!-- Mode selection: Durée relative vs Créneau horaire -->
       <div style="display: flex; gap: 8px; margin-bottom: 16px;">
-        <button type="button" id="tab-mode-duration" class="m3-button m3-button-filled" style="flex: 1; height: 36px; font-size: 13px;" data-i18n="mode_duration">
+        <button type="button" id="tab-mode-duration" class="m3-button m3-button-filled" style="flex: 1; height: 38px; font-size: 13px;" data-i18n="mode_duration">
           ⏱ Durée relative
         </button>
-        <button type="button" id="tab-mode-slot" class="m3-button m3-button-outlined" style="flex: 1; height: 36px; font-size: 13px;" data-i18n="mode_slot">
+        <button type="button" id="tab-mode-slot" class="m3-button m3-button-outlined" style="flex: 1; height: 38px; font-size: 13px;" data-i18n="mode_slot">
           📅 Créneau horaire
         </button>
       </div>
@@ -270,8 +256,9 @@
       </div>
 
       <div style="margin-bottom: 16px;">
-        <button type="button" id="btn-use-current-pos" class="m3-button m3-button-outlined" style="width: 100%; height: 38px; font-size: 13px;" data-i18n="use_current_pos_btn">
-          📍 Utiliser la position actuelle du véhicule
+        <button type="button" id="btn-use-current-pos" class="m3-button m3-button-outlined" style="width: 100%; height: 40px; font-size: 13px;" data-i18n="use_current_pos_btn">
+          <span class="material-symbols-outlined" style="font-size: 18px;">my_location</span>
+          <span>Utiliser la position actuelle du véhicule</span>
         </button>
       </div>
 
@@ -304,6 +291,8 @@
       </div>
     </div>
   </div>
+
+  <div id="toast" class="m3-toast"></div>
 
   <script src="/static/js/i18n.js"></script>
   <script src="/static/js/admin.js"></script>
