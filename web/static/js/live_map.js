@@ -231,6 +231,8 @@
 
   function showExpiredScreen() {
     if (elTelemetrySheet) elTelemetrySheet.style.display = 'none';
+    if (elRecenterBtn) elRecenterBtn.style.display = 'none';
+    if (elPendingCard) elPendingCard.style.display = 'none';
     if (elExpiredCard) elExpiredCard.style.display = 'block';
   }
 
@@ -256,6 +258,18 @@
         I18n.setLang(nextLang);
       });
       updateLangIndicator();
+    }
+
+    if (window.TESLAMAP_IS_EXPIRED) {
+      showExpiredScreen();
+      initMap();
+      return;
+    }
+
+    if (window.TESLAMAP_IS_PENDING) {
+      if (elTelemetrySheet) elTelemetrySheet.style.display = 'none';
+      if (elRecenterBtn) elRecenterBtn.style.display = 'none';
+      if (elPendingCard) elPendingCard.style.display = 'block';
     }
 
     initMap();

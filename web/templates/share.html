@@ -14,11 +14,16 @@
 </head>
 <body>
 
+  <!-- Floating Language Switcher -->
+  <button type="button" class="m3-chip" id="btn-lang-toggle" style="position: fixed; top: 16px; right: 16px; z-index: 2500; cursor: pointer; padding: 6px 12px; font-weight: 600; box-shadow: 0 4px 14px rgba(0,0,0,0.5); backdrop-filter: blur(8px); background: rgba(20,23,29,0.85); border: 1px solid var(--md-sys-color-outline-variant);" title="Switch Language">
+    🌐 <span id="lang-indicator">EN</span>
+  </button>
+
   <!-- Fullscreen Map -->
   <div id="map"></div>
 
   <!-- Re-center Action Button -->
-  <button id="recenter-btn" class="fab-recenter" title="Recentrer sur le véhicule">
+  <button id="recenter-btn" class="fab-recenter" title="Recentrer sur le véhicule" style="display: {{if or .IsExpired .IsPending}}none{{else}}flex{{end}};">
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <circle cx="12" cy="12" r="8"></circle>
       <line x1="12" y1="2" x2="12" y2="6"></line>
@@ -29,7 +34,7 @@
   </button>
 
   <!-- Floating Telemetry Sheet (M3 Responsive Bottom Sheet / Card) -->
-  <div class="telemetry-sheet" id="telemetry-sheet">
+  <div class="telemetry-sheet" id="telemetry-sheet" style="display: {{if or .IsExpired .IsPending}}none{{else}}block{{end}};">
     <div class="sheet-handle"></div>
 
     <div class="telemetry-header">
@@ -42,9 +47,6 @@
           <span class="pulse-dot"></span>
           <span id="status-chip-text" data-i18n="connecting">Connexion...</span>
         </div>
-        <button type="button" class="m3-chip" id="btn-lang-toggle" style="cursor: pointer; padding: 0 8px; font-weight: 600;" title="Switch Language">
-          <span id="lang-indicator">EN</span>
-        </button>
       </div>
     </div>
 
@@ -120,6 +122,8 @@
   
   <script>
     window.TESLAMAP_TOKEN = "{{.Token}}";
+    window.TESLAMAP_IS_EXPIRED = {{.IsExpired}};
+    window.TESLAMAP_IS_PENDING = {{.IsPending}};
     window.TESLAMAP_TILE_URL = "{{.TileURL}}";
     window.TESLAMAP_ATTRIBUTION = {{.Attribution}};
     window.TESLAMAP_MAX_ZOOM = {{.MaxZoom}};
