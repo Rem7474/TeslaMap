@@ -31,6 +31,7 @@
       expired_desc: "Ce lien de partage temporaire n'est plus actif. Le trajet est soit terminé, soit le temps de partage autorisé s'est écoulé.",
       min_unit: "min",
       km_unit: "km",
+      recenter: "Recentrer",
 
       // Admin Dashboard
       mqtt_connected: "MQTT Connecté",
@@ -148,6 +149,7 @@
       expired_desc: "This temporary share link is no longer active. The trip has either finished, or the allowed sharing time has elapsed.",
       min_unit: "min",
       km_unit: "km",
+      recenter: "Re-center",
 
       // Admin Dashboard
       mqtt_connected: "MQTT Connected",

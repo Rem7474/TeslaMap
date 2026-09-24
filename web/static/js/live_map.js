@@ -10,6 +10,8 @@
   let destMarker = null;
   let firstFix = true;
   let currentLatLng = null;
+  let autoFollow = true;
+  let isProgrammaticMove = false;
 
   // DOM Elements
   const elStatusChip = document.getElementById('status-chip');
@@ -23,11 +25,23 @@
   const elProgressBar = document.getElementById('progress-bar');
   const elSafeZoneAlert = document.getElementById('safe-zone-alert');
   const elSafeZoneName = document.getElementById('safe-zone-name');
+  const elRecenterBar = document.getElementById('recenter-bar-container');
   const elRecenterBtn = document.getElementById('recenter-btn');
   const elExpiredCard = document.getElementById('expired-card');
   const elPendingCard = document.getElementById('pending-card');
   const elPendingStartsAt = document.getElementById('pending-starts-at');
   const elTelemetrySheet = document.getElementById('telemetry-sheet');
+
+  function setAutoFollow(enabled) {
+    autoFollow = enabled;
+    if (elRecenterBar) {
+      if (autoFollow || !currentLatLng || (lastTelemetry && lastTelemetry.in_safe_zone)) {
+        elRecenterBar.classList.remove('visible');
+      } else {
+        elRecenterBar.classList.add('visible');
+      }
+    }
+  }
 
   function initMap() {
     // Default to Europe center before first fix
@@ -62,11 +76,27 @@
     if (elRecenterBtn) {
       elRecenterBtn.addEventListener('click', recenterMap);
     }
+
+    // Detect manual user panning / dragging / zooming
+    map.on('dragstart', function () {
+      setAutoFollow(false);
+    });
+
+    map.on('zoomstart', function () {
+      if (!isProgrammaticMove) {
+        setAutoFollow(false);
+      }
+    });
   }
 
   function recenterMap() {
     if (currentLatLng && map) {
-      map.setView(currentLatLng, Math.max(map.getZoom(), 14), { animate: true });
+      setAutoFollow(true);
+      isProgrammaticMove = true;
+      map.setView(currentLatLng, Math.max(map.getZoom(), 15), { animate: true, duration: 0.8 });
+      setTimeout(function () {
+        isProgrammaticMove = false;
+      }, 900);
     }
   }
 
@@ -120,6 +150,7 @@
       if (map && carMarker && map.hasLayer(carMarker)) {
         map.removeLayer(carMarker);
       }
+      if (elRecenterBar) elRecenterBar.classList.remove('visible');
       updateStatusChip(I18n.t('private_zone'), 'm3-chip-warning');
     } else {
       if (elSafeZoneAlert) elSafeZoneAlert.style.display = 'none';
@@ -141,7 +172,17 @@
 
         if (firstFix) {
           firstFix = false;
+          isProgrammaticMove = true;
           map.setView(currentLatLng, 15, { animate: false });
+          setTimeout(function () {
+            isProgrammaticMove = false;
+          }, 150);
+        } else if (autoFollow && map) {
+          isProgrammaticMove = true;
+          map.panTo(currentLatLng, { animate: true, duration: 1.0 });
+          setTimeout(function () {
+            isProgrammaticMove = false;
+          }, 1100);
         }
       }
     }
@@ -231,7 +272,7 @@
 
   function showExpiredScreen() {
     if (elTelemetrySheet) elTelemetrySheet.style.display = 'none';
-    if (elRecenterBtn) elRecenterBtn.style.display = 'none';
+    if (elRecenterBar) elRecenterBar.classList.remove('visible');
     if (elPendingCard) elPendingCard.style.display = 'none';
     if (elExpiredCard) elExpiredCard.style.display = 'block';
   }
@@ -268,7 +309,7 @@
 
     if (window.TESLAMAP_IS_PENDING) {
       if (elTelemetrySheet) elTelemetrySheet.style.display = 'none';
-      if (elRecenterBtn) elRecenterBtn.style.display = 'none';
+      if (elRecenterBar) elRecenterBar.classList.remove('visible');
       if (elPendingCard) elPendingCard.style.display = 'block';
     }
 

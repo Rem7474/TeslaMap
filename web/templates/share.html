@@ -22,16 +22,20 @@
   <!-- Fullscreen Map -->
   <div id="map"></div>
 
-  <!-- Re-center Action Button -->
-  <button id="recenter-btn" class="fab-recenter" title="Recentrer sur le véhicule" style="display: {{if or .IsExpired .IsPending}}none{{else}}flex{{end}};">
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <circle cx="12" cy="12" r="8"></circle>
-      <line x1="12" y1="2" x2="12" y2="6"></line>
-      <line x1="12" y1="18" x2="12" y2="22"></line>
-      <line x1="2" y1="12" x2="6" y2="12"></line>
-      <line x1="18" y1="12" x2="22" y2="12"></line>
-    </svg>
-  </button>
+  <!-- Navigation Re-center Floating Pill Bar -->
+  <div id="recenter-bar-container" class="recenter-bar-container">
+    <button id="recenter-btn" class="recenter-pill-btn" type="button">
+      <svg class="recenter-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="7"></circle>
+        <circle cx="12" cy="12" r="2" fill="currentColor"></circle>
+        <line x1="12" y1="1" x2="12" y2="5"></line>
+        <line x1="12" y1="19" x2="12" y2="23"></line>
+        <line x1="1" y1="12" x2="5" y2="12"></line>
+        <line x1="19" y1="12" x2="23" y2="12"></line>
+      </svg>
+      <span data-i18n="recenter">Recentrer</span>
+    </button>
+  </div>
 
   <!-- Floating Telemetry Sheet (M3 Responsive Bottom Sheet / Card) -->
   <div class="telemetry-sheet" id="telemetry-sheet" style="display: {{if or .IsExpired .IsPending}}none{{else}}block{{end}};">
