@@ -50,6 +50,34 @@
     setTimeout(() => elToast.classList.remove('show'), 3200);
   }
 
+  async function copyToClipboard(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (e) {
+        console.warn("navigator.clipboard failed, using fallback:", e);
+      }
+    }
+    try {
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      textArea.style.position = "fixed";
+      textArea.style.left = "-9999px";
+      textArea.style.top = "-9999px";
+      textArea.style.opacity = "0";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      const success = document.execCommand('copy');
+      textArea.remove();
+      return success;
+    } catch (e) {
+      console.error("Clipboard copy failed:", e);
+      return false;
+    }
+  }
+
   // Material 3 Confirmation Dialog Promise
   function confirmM3({ title, message, confirmText, isDanger = true }) {
     return new Promise((resolve) => {
@@ -354,7 +382,12 @@
           body: JSON.stringify(payload)
         });
         if (res.ok) {
+          const newLink = await res.json();
           elModal.classList.remove('open');
+          if (newLink && newLink.token) {
+            const fullUrl = window.location.origin + '/share/' + newLink.token;
+            await copyToClipboard(fullUrl);
+          }
           showToast(I18n.t('link_created'));
           loadLinks();
         } else {
@@ -471,10 +504,9 @@
 
   // Public admin namespace
   window.TeslaAdmin = {
-    copyLink: function (url) {
-      navigator.clipboard.writeText(url).then(() => {
-        showToast(I18n.t('copied_toast'));
-      });
+    copyLink: async function (url) {
+      await copyToClipboard(url);
+      showToast(I18n.t('copied_toast'));
     },
     revokeLink: async function (id) {
       const ok = await confirmM3({

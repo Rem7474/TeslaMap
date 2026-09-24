@@ -88,7 +88,7 @@
       opt_show_battery_sub: "Pourcentage restant",
       cancel: "Annuler",
       create: "Créer le lien",
-      link_created: "Lien de partage créé !",
+      link_created: "Lien de partage créé et copié !",
 
       // TeslaMate Geofences Sync & Safe Zone Dialog
       teslamate_sync_title: "Synchronisation TeslaMate active :",
@@ -206,7 +206,7 @@
       opt_show_battery_sub: "Remaining percentage",
       cancel: "Cancel",
       create: "Create Link",
-      link_created: "Share link created!",
+      link_created: "Share link created and copied!",
 
       // TeslaMate Geofences Sync & Safe Zone Dialog
       teslamate_sync_title: "TeslaMate synchronization active:",
