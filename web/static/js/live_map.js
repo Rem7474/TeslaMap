@@ -7,6 +7,7 @@
   let carMarker = null;
   let carIconElement = null;
   let routeLine = null;
+  let traveledLine = null;
   let destMarker = null;
   let firstFix = true;
   let currentLatLng = null;
@@ -150,6 +151,12 @@
       if (map && carMarker && map.hasLayer(carMarker)) {
         map.removeLayer(carMarker);
       }
+      if (traveledLine && map.hasLayer(traveledLine)) {
+        map.removeLayer(traveledLine);
+      }
+      if (routeLine && map.hasLayer(routeLine)) {
+        map.removeLayer(routeLine);
+      }
       if (elRecenterBar) elRecenterBar.classList.remove('visible');
       updateStatusChip(I18n.t('private_zone'), 'm3-chip-warning');
     } else {
@@ -168,6 +175,30 @@
         }
         if (carIconElement) {
           carIconElement.style.transform = `rotate(${data.heading || 0}deg)`;
+        }
+
+        // Draw Traveled Path (Gray Polyline)
+        if (data.traveled_coordinates && data.traveled_coordinates.length > 0) {
+          let pts = data.traveled_coordinates.slice();
+          if (currentLatLng) {
+            pts.push(currentLatLng);
+          }
+          if (!traveledLine) {
+            traveledLine = L.polyline(pts, {
+              color: '#94a3b8',
+              weight: 5,
+              opacity: 0.65,
+              lineJoin: 'round',
+              lineCap: 'round'
+            }).addTo(map);
+          } else {
+            if (!map.hasLayer(traveledLine)) {
+              traveledLine.addTo(map);
+            }
+            traveledLine.setLatLngs(pts);
+          }
+        } else if (traveledLine && map.hasLayer(traveledLine)) {
+          traveledLine.setLatLngs([]);
         }
 
         if (firstFix) {
@@ -275,6 +306,9 @@
     if (elRecenterBar) elRecenterBar.classList.remove('visible');
     if (elPendingCard) elPendingCard.style.display = 'none';
     if (elExpiredCard) elExpiredCard.style.display = 'block';
+    if (traveledLine && map && map.hasLayer(traveledLine)) map.removeLayer(traveledLine);
+    if (routeLine && map && map.hasLayer(routeLine)) map.removeLayer(routeLine);
+    if (destMarker && map && map.hasLayer(destMarker)) map.removeLayer(destMarker);
   }
 
   function updateLangIndicator() {

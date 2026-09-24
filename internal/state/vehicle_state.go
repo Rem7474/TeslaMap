@@ -55,8 +55,15 @@ type PublicTelemetry struct {
 	MinutesLeft    int         `json:"minutes_left,omitempty"`
 	DistanceLeftKm float64     `json:"distance_left_km,omitempty"`
 	ProgressPct    float64     `json:"progress_pct"`
-	Coordinates    [][]float64 `json:"route_coordinates,omitempty"`
-	UpdatedAt      string      `json:"updated_at"`
+	Coordinates         [][]float64 `json:"route_coordinates,omitempty"`
+	TraveledCoordinates [][]float64 `json:"traveled_coordinates,omitempty"`
+	UpdatedAt           string      `json:"updated_at"`
+}
+
+type TraveledPoint struct {
+	Latitude  float64
+	Longitude float64
+	Timestamp time.Time
 }
 
 type lastDestinationInfo struct {
@@ -77,6 +84,7 @@ type StateManager struct {
 	parkGraceTimer    *time.Timer
 	parkGraceTimerMu  sync.Mutex
 	parkGraceDuration time.Duration
+	traveledPoints    []TraveledPoint
 }
 
 func NewStateManager(r routing.Router, db *database.DB) *StateManager {
@@ -196,6 +204,30 @@ func (sm *StateManager) UpdateLocation(lat, lon, heading, speed float64) {
 		mins = sm.state.Route.MinutesToArrival
 	}
 	currentState := sm.state.State
+
+	// Record traveled path coordinates if not inside safe zones
+	if lat != 0 && lon != 0 {
+		var safeZones []database.SafeZone
+		if sm.db != nil {
+			safeZones, _ = sm.db.ListSafeZones()
+		}
+		geoRes := geofence.CheckSafeZones(lat, lon, safeZones)
+		inSafe := geoRes.IsInsideSafeZone || sm.state.TeslaMateGeofence != ""
+
+		if !inSafe {
+			n := len(sm.traveledPoints)
+			if n == 0 || geofence.HaversineDistance(sm.traveledPoints[n-1].Latitude, sm.traveledPoints[n-1].Longitude, lat, lon) >= 15.0 {
+				sm.traveledPoints = append(sm.traveledPoints, TraveledPoint{
+					Latitude:  lat,
+					Longitude: lon,
+					Timestamp: time.Now(),
+				})
+				if len(sm.traveledPoints) > 5000 {
+					sm.traveledPoints = sm.traveledPoints[len(sm.traveledPoints)-5000:]
+				}
+			}
+		}
+	}
 	sm.mu.Unlock()
 
 	// If route is active, calculate or update routing polyline in background if needed
@@ -328,7 +360,9 @@ func (sm *StateManager) UpdateActiveRoute(destination string, lat, lon, minutes,
 	initialDist := distance
 	var existingCoords [][]float64
 
-	if !isNewRoute && sm.state.Route != nil {
+	if isNewRoute {
+		sm.traveledPoints = nil
+	} else if sm.state.Route != nil {
 		initialDist = sm.state.Route.InitialDistance
 		existingCoords = sm.state.Route.Coordinates
 	}
@@ -383,6 +417,8 @@ func (sm *StateManager) ensureRoutePolyline(startLat, startLon, destLat, destLon
 func (sm *StateManager) GetPublicTelemetry(link *database.SharedLink) PublicTelemetry {
 	sm.mu.RLock()
 	st := sm.state
+	traveledPts := make([]TraveledPoint, len(sm.traveledPoints))
+	copy(traveledPts, sm.traveledPoints)
 	sm.mu.RUnlock()
 
 	// Check safe zones
@@ -416,6 +452,18 @@ func (sm *StateManager) GetPublicTelemetry(link *database.SharedLink) PublicTele
 		lon := st.Longitude
 		res.Latitude = &lat
 		res.Longitude = &lon
+
+		// Filter traveled points for this link (respecting StartsAt validity)
+		var traveledCoords [][]float64
+		for _, pt := range traveledPts {
+			if link.StartsAt != nil && pt.Timestamp.Before(*link.StartsAt) {
+				continue
+			}
+			traveledCoords = append(traveledCoords, []float64{pt.Latitude, pt.Longitude})
+		}
+		if len(traveledCoords) > 0 {
+			res.TraveledCoordinates = traveledCoords
+		}
 	}
 
 	if link.ShowSpeed && !inSafeZone {

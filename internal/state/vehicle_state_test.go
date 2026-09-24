@@ -264,3 +264,43 @@ func TestAutoExpire_FreeDrivingResumesDrivingCancelsGraceTimer(t *testing.T) {
 	}
 }
 
+func TestTraveledPathTrackingAndFiltering(t *testing.T) {
+	tmpDir := t.TempDir()
+	db, err := database.Open(filepath.Join(tmpDir, "test.db"))
+	if err != nil {
+		t.Fatalf("failed to open db: %v", err)
+	}
+	defer db.Close()
+
+	sm := NewStateManager(nil, db)
+
+	// 1. Move outside safe zone across 3 points (each > 15m apart)
+	sm.UpdateLocation(48.8584, 2.2945, 90, 50)
+	sm.UpdateLocation(48.8590, 2.2950, 90, 50)
+	sm.UpdateLocation(48.8600, 2.2960, 90, 50)
+
+	linkAll, _ := db.CreateSharedLink("All Path", nil, nil, false, true, true)
+	telem := sm.GetPublicTelemetry(linkAll)
+
+	if len(telem.TraveledCoordinates) != 3 {
+		t.Fatalf("expected 3 traveled coordinates, got %d", len(telem.TraveledCoordinates))
+	}
+
+	// 2. Link with starts_at in the future: points before starts_at are filtered
+	futureStart := time.Now().Add(10 * time.Minute)
+	linkFuture, _ := db.CreateSharedLink("Future Link", &futureStart, nil, false, true, true)
+	telemFuture := sm.GetPublicTelemetry(linkFuture)
+
+	if len(telemFuture.TraveledCoordinates) != 0 {
+		t.Errorf("expected 0 traveled coordinates for future link, got %d", len(telemFuture.TraveledCoordinates))
+	}
+
+	// 3. New route clears previous trip's traveled coordinates
+	sm.UpdateActiveRoute("Versailles", 48.8049, 2.1204, 20, 15.0, 70)
+	telemNewRoute := sm.GetPublicTelemetry(linkAll)
+	if len(telemNewRoute.TraveledCoordinates) != 0 {
+		t.Errorf("expected 0 traveled coordinates after new route began, got %d", len(telemNewRoute.TraveledCoordinates))
+	}
+}
+
+
