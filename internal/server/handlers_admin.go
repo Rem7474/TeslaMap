@@ -45,8 +45,43 @@ func (s *Server) handleLogoutAPI(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleAdminPage(w http.ResponseWriter, r *http.Request) {
+	tileURL := "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+	attribution := `&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>`
+	maxZoom := 19
+
+	if s.cfg.MapTileURL != "" {
+		tileURL = s.cfg.MapTileURL
+		attribution = `&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>`
+	} else if (s.cfg.MapProvider == "cartodb" || s.cfg.MapProvider == "carto") && s.cfg.MapAPIKey != "" {
+		tileURL = fmt.Sprintf("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=%s", s.cfg.MapAPIKey)
+		attribution = `&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>`
+		maxZoom = 19
+	} else if s.cfg.MapProvider == "mapbox" && s.cfg.MapAPIKey != "" {
+		tileURL = fmt.Sprintf("https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/256/{z}/{x}/{y}@2x?access_token=%s", s.cfg.MapAPIKey)
+		attribution = `&copy; <a href="https://www.mapbox.com/about/maps/">Mapbox</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>`
+		maxZoom = 22
+	} else if s.cfg.MapProvider == "maptiler" && s.cfg.MapAPIKey != "" {
+		tileURL = fmt.Sprintf("https://api.maptiler.com/maps/streets-v2-dark/{z}/{x}/{y}.png?key=%s", s.cfg.MapAPIKey)
+		attribution = `&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>`
+		maxZoom = 20
+	} else if s.cfg.MapProvider == "stadia" && s.cfg.MapAPIKey != "" {
+		tileURL = fmt.Sprintf("https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png?api_key=%s", s.cfg.MapAPIKey)
+		attribution = `&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>`
+		maxZoom = 20
+	}
+
+	data := struct {
+		TileURL     string
+		Attribution string
+		MaxZoom     int
+	}{
+		TileURL:     tileURL,
+		Attribution: attribution,
+		MaxZoom:     maxZoom,
+	}
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	_ = s.templates.ExecuteTemplate(w, "admin.html", nil)
+	_ = s.templates.ExecuteTemplate(w, "admin.html", data)
 }
 
 func (s *Server) handleAdminStatusAPI(w http.ResponseWriter, r *http.Request) {
