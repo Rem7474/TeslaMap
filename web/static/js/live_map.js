@@ -14,6 +14,17 @@
   let autoFollow = true;
   let isProgrammaticMove = false;
 
+  // Smooth motion interpolation state
+  let animFrameId = null;
+  let animStartPos = null;
+  let animTargetPos = null;
+  let animStartTime = 0;
+  let animDuration = 1500;
+  let animStartHeading = 0;
+  let animTargetHeading = 0;
+  let lastServerUpdateTime = 0;
+  let lastTraveledCoords = [];
+
   // DOM Elements
   const elStatusChip = document.getElementById('status-chip');
   const elDestTitle = document.getElementById('dest-title');
@@ -42,6 +53,122 @@
         elRecenterBar.classList.add('visible');
       }
     }
+  }
+
+  function animateVehicleTo(targetLat, targetLon, targetHeading) {
+    const now = performance.now();
+    const targetPos = [targetLat, targetLon];
+    const targetH = targetHeading || 0;
+
+    if (!map.hasLayer(carMarker)) {
+      carMarker.addTo(map);
+    }
+
+    if (firstFix || !animStartPos) {
+      firstFix = false;
+      currentLatLng = targetPos;
+      animStartPos = targetPos;
+      animTargetPos = targetPos;
+      animStartHeading = targetH;
+      animTargetHeading = targetH;
+      lastServerUpdateTime = now;
+      carMarker.setLatLng(currentLatLng);
+      if (!carIconElement) carIconElement = document.getElementById('car-svg-icon');
+      if (carIconElement) carIconElement.style.transform = `rotate(${targetH}deg)`;
+
+      isProgrammaticMove = true;
+      map.setView(currentLatLng, 15, { animate: false });
+      setTimeout(function () {
+        isProgrammaticMove = false;
+      }, 150);
+      return;
+    }
+
+    // Adaptive duration matching the server update frequency (typically 1.0s - 3.0s)
+    if (lastServerUpdateTime > 0) {
+      const delta = now - lastServerUpdateTime;
+      if (delta >= 500 && delta <= 6000) {
+        animDuration = delta;
+      } else {
+        animDuration = 1500;
+      }
+    }
+    lastServerUpdateTime = now;
+
+    // Check for large teleport (> 50 km) e.g. reset/simulation loop
+    const dist = Math.hypot(targetLat - animStartPos[0], targetLon - animStartPos[1]);
+    if (dist > 0.5) {
+      if (animFrameId) cancelAnimationFrame(animFrameId);
+      currentLatLng = targetPos;
+      animStartPos = targetPos;
+      animTargetPos = targetPos;
+      animStartHeading = targetH;
+      animTargetHeading = targetH;
+      carMarker.setLatLng(currentLatLng);
+      if (carIconElement) carIconElement.style.transform = `rotate(${targetH}deg)`;
+      if (autoFollow && map) {
+        isProgrammaticMove = true;
+        map.setView(currentLatLng, map.getZoom(), { animate: false });
+        setTimeout(function () {
+          isProgrammaticMove = false;
+        }, 150);
+      }
+      return;
+    }
+
+    // Start from current intermediate position
+    animStartPos = currentLatLng ? [currentLatLng[0], currentLatLng[1]] : [targetLat, targetLon];
+    animTargetPos = targetPos;
+    animStartTime = now;
+
+    // Shortest angular turn
+    let diff = ((targetH - (animStartHeading % 360) + 540) % 360) - 180;
+    animTargetHeading = animStartHeading + diff;
+
+    if (animFrameId) {
+      cancelAnimationFrame(animFrameId);
+    }
+
+    // Camera pan in sync with the vehicle animation duration
+    if (autoFollow && map) {
+      isProgrammaticMove = true;
+      map.panTo(targetPos, { animate: true, duration: animDuration / 1000, easeLinearity: 0.25 });
+      setTimeout(function () {
+        isProgrammaticMove = false;
+      }, animDuration + 50);
+    }
+
+    function step(timestamp) {
+      const elapsed = timestamp - animStartTime;
+      const progress = Math.min(elapsed / animDuration, 1.0);
+
+      // Linear interpolation between the two points for constant, natural vehicle velocity
+      const lat = animStartPos[0] + (animTargetPos[0] - animStartPos[0]) * progress;
+      const lon = animStartPos[1] + (animTargetPos[1] - animStartPos[1]) * progress;
+      const heading = animStartHeading + (animTargetHeading - animStartHeading) * progress;
+
+      currentLatLng = [lat, lon];
+      carMarker.setLatLng(currentLatLng);
+
+      if (!carIconElement) carIconElement = document.getElementById('car-svg-icon');
+      if (carIconElement) {
+        carIconElement.style.transform = `rotate(${heading}deg)`;
+      }
+
+      // Smoothly update the end of the gray traveled line to the car's current animated point
+      if (traveledLine && lastTraveledCoords && lastTraveledCoords.length > 0) {
+        traveledLine.setLatLngs(lastTraveledCoords.concat([currentLatLng]));
+      }
+
+      if (progress < 1.0) {
+        animFrameId = requestAnimationFrame(step);
+      } else {
+        animStartHeading = animTargetHeading % 360;
+        animFrameId = null;
+      }
+    }
+
+    animFrameId = requestAnimationFrame(step);
   }
 
   function initMap() {
@@ -166,27 +293,14 @@
     } else {
       if (elSafeZoneAlert) elSafeZoneAlert.style.display = 'none';
       if (data.latitude != null && data.longitude != null) {
-        currentLatLng = [data.latitude, data.longitude];
+        lastTraveledCoords = data.traveled_coordinates || [];
 
-        if (!map.hasLayer(carMarker)) {
-          carMarker.addTo(map);
-        }
-        carMarker.setLatLng(currentLatLng);
+        // Smoothly interpolate vehicle position, heading, and map pan at 60fps
+        animateVehicleTo(data.latitude, data.longitude, data.heading || 0);
 
-        // Smooth heading rotation
-        if (!carIconElement) {
-          carIconElement = document.getElementById('car-svg-icon');
-        }
-        if (carIconElement) {
-          carIconElement.style.transform = `rotate(${data.heading || 0}deg)`;
-        }
-
-        // Draw Traveled Path (Gray Polyline)
-        if (data.traveled_coordinates && data.traveled_coordinates.length > 0) {
-          let pts = data.traveled_coordinates.slice();
-          if (currentLatLng) {
-            pts.push(currentLatLng);
-          }
+        // Ensure traveledLine is created and displayed
+        if (lastTraveledCoords.length > 0) {
+          const pts = lastTraveledCoords.concat([currentLatLng || [data.latitude, data.longitude]]);
           if (!traveledLine) {
             traveledLine = L.polyline(pts, {
               color: '#94a3b8',
@@ -203,21 +317,6 @@
           }
         } else if (traveledLine && map.hasLayer(traveledLine)) {
           traveledLine.setLatLngs([]);
-        }
-
-        if (firstFix) {
-          firstFix = false;
-          isProgrammaticMove = true;
-          map.setView(currentLatLng, 15, { animate: false });
-          setTimeout(function () {
-            isProgrammaticMove = false;
-          }, 150);
-        } else if (autoFollow && map) {
-          isProgrammaticMove = true;
-          map.panTo(currentLatLng, { animate: true, duration: 1.0 });
-          setTimeout(function () {
-            isProgrammaticMove = false;
-          }, 1100);
         }
       }
     }
@@ -306,6 +405,10 @@
   }
 
   function showExpiredScreen() {
+    if (animFrameId) {
+      cancelAnimationFrame(animFrameId);
+      animFrameId = null;
+    }
     if (elTelemetrySheet) elTelemetrySheet.style.display = 'none';
     if (elRecenterBar) elRecenterBar.classList.remove('visible');
     if (elPendingCard) elPendingCard.style.display = 'none';
