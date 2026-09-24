@@ -72,7 +72,11 @@
       iconAnchor: [24, 24]
     });
 
-    carMarker = L.marker([46.8, 2.5], { icon: carIcon, zIndexOffset: 1000 });
+    carMarker = L.marker([46.8, 2.5], {
+      icon: carIcon,
+      zIndexOffset: 1000,
+      interactive: false
+    });
 
     if (elRecenterBtn) {
       elRecenterBtn.addEventListener('click', recenterMap);
@@ -271,7 +275,7 @@
             iconSize: [20, 20],
             iconAnchor: [10, 10]
           });
-          destMarker = L.marker(destCoord, { icon: destIcon }).addTo(map);
+          destMarker = L.marker(destCoord, { icon: destIcon, interactive: false }).addTo(map);
         } else {
           destMarker.setLatLng(destCoord);
         }
