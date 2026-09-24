@@ -64,6 +64,7 @@ func (s *Server) routes() {
 	// Admin protected pages & APIs
 	s.mux.HandleFunc("GET /admin", s.requireAuth(s.handleAdminPage))
 	s.mux.HandleFunc("GET /api/admin/status", s.requireAuth(s.handleAdminStatusAPI))
+	s.mux.HandleFunc("GET /api/admin/stream", s.requireAuth(s.handleAdminStream))
 	s.mux.HandleFunc("GET /api/admin/links", s.requireAuth(s.handleAdminLinksListAPI))
 	s.mux.HandleFunc("POST /api/admin/links", s.requireAuth(s.handleAdminLinksCreateAPI))
 	s.mux.HandleFunc("DELETE /api/admin/links/{id}", s.requireAuth(s.handleAdminLinksDeleteAPI))

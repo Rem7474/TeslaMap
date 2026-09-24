@@ -510,10 +510,86 @@
     }
   };
 
+  let lastLinksJson = "";
+  let sseSource = null;
+
+  function connectAdminSSE() {
+    if (window.EventSource) {
+      if (sseSource) {
+        try { sseSource.close(); } catch (_) {}
+      }
+      sseSource = new EventSource('/api/admin/stream');
+
+      sseSource.onmessage = function (event) {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload.status) {
+            lastStatus = payload.status;
+            renderStatus(lastStatus);
+          }
+          if (payload.links) {
+            const jsonStr = JSON.stringify(payload.links);
+            if (jsonStr !== lastLinksJson) {
+              lastLinksJson = jsonStr;
+              cachedLinks = payload.links;
+              renderLinks(cachedLinks);
+            }
+          }
+        } catch (e) {
+          console.error("Error processing admin SSE stream message", e);
+        }
+      };
+
+      sseSource.onerror = function () {
+        // EventSource will automatically attempt reconnection.
+        // Fallback polling will ensure freshness.
+      };
+    }
+  }
+
+  // Periodic expiration checker: updates badge from 'Actif' to 'Expiré' in real time
+  // as soon as link.expires_at < now without waiting for server response.
+  function checkLinkExpirations() {
+    if (!cachedLinks || cachedLinks.length === 0) return;
+    const now = new Date();
+    let hasStateChange = false;
+    for (const link of cachedLinks) {
+      if (link.is_active && link.expires_at) {
+        const exp = new Date(link.expires_at);
+        if (exp <= now) {
+          hasStateChange = true;
+          break;
+        }
+      }
+      if (link.is_active && link.starts_at) {
+        const start = new Date(link.starts_at);
+        if (start <= now) {
+          // Changed from scheduled to active
+          hasStateChange = true;
+          break;
+        }
+      }
+    }
+    if (hasStateChange) {
+      renderLinks(cachedLinks);
+    }
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     fetchStatus();
     loadLinks();
     loadZones();
-    setInterval(fetchStatus, 4000);
+    connectAdminSSE();
+
+    // Fallback polling every 8s in case SSE is interrupted or unsupported
+    setInterval(() => {
+      if (!sseSource || sseSource.readyState !== EventSource.OPEN) {
+        fetchStatus();
+        loadLinks();
+      }
+    }, 8000);
+
+    // Live second-by-second expiration check
+    setInterval(checkLinkExpirations, 1000);
   });
 })();

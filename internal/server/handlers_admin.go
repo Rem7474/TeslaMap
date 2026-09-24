@@ -2,10 +2,14 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
 	"time"
+
+	"teslamap/internal/database"
+	"teslamap/internal/state"
 )
 
 func (s *Server) handleLoginPage(w http.ResponseWriter, r *http.Request) {
@@ -48,6 +52,55 @@ func (s *Server) handleAdminPage(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleAdminStatusAPI(w http.ResponseWriter, r *http.Request) {
 	st := s.stateManager.GetRawState()
 	jsonResponse(w, http.StatusOK, st)
+}
+
+func (s *Server) handleAdminStream(w http.ResponseWriter, r *http.Request) {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "Streaming unsupported", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache, no-transform")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no")
+
+	sendUpdate := func() {
+		st := s.stateManager.GetRawState()
+		links, _ := s.db.ListSharedLinks()
+		payload := struct {
+			Status state.VehicleState     `json:"status"`
+			Links  []database.SharedLink `json:"links"`
+		}{
+			Status: st,
+			Links:  links,
+		}
+		if b, err := json.Marshal(payload); err == nil {
+			fmt.Fprintf(w, "data: %s\n\n", b)
+			flusher.Flush()
+		}
+	}
+
+	// Send initial snapshot
+	sendUpdate()
+
+	subCh := s.stateManager.Subscribe()
+	defer s.stateManager.Unsubscribe(subCh)
+
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case <-ticker.C:
+			sendUpdate()
+		case <-subCh:
+			sendUpdate()
+		}
+	}
 }
 
 func (s *Server) handleAdminLinksListAPI(w http.ResponseWriter, r *http.Request) {
