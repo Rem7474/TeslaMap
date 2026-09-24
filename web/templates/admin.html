@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TeslaMap Admin</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
   <link rel="stylesheet" href="/static/css/material3.css">
   <link rel="stylesheet" href="/static/css/admin.css">
 </head>
@@ -75,17 +74,12 @@
         </div>
 
         <div class="admin-map-wrapper">
-          <div id="admin-mini-map"></div>
-          <button type="button" id="btn-admin-recenter" class="admin-map-recenter-btn" title="Recentrer sur le véhicule" onclick="TeslaAdmin.recenterAdminMap()">
+          <iframe src="/admin/map" id="admin-map-iframe" class="admin-map-frame" title="Carte Tesla Live"></iframe>
+          <a href="/admin/map" target="_blank" class="admin-map-expand-btn" title="Ouvrir la carte en plein écran">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="3"></circle>
-              <path d="M12 2v3m0 14v3M2 12h3m14 0h3"></path>
+              <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path>
             </svg>
-          </button>
-          <div class="admin-map-badge">
-            <span class="pulse-dot"></span>
-            <span id="admin-map-coords">-- , --</span>
-          </div>
+          </a>
         </div>
       </div>
     </section>
@@ -304,13 +298,6 @@
     </div>
   </div>
 
-  <!-- Leaflet JS -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-  <script>
-    window.TESLAMAP_TILE_URL = "{{.TileURL}}";
-    window.TESLAMAP_ATTRIBUTION = {{.Attribution}};
-    window.TESLAMAP_MAX_ZOOM = {{.MaxZoom}};
-  </script>
   <script src="/static/js/i18n.js"></script>
   <script src="/static/js/admin.js"></script>
 </body>

@@ -4,28 +4,6 @@
   let cachedLinks = [];
   let cachedZones = [];
   let lastStatus = null;
-  let adminMap = null;
-  let adminCarMarker = null;
-  let adminRouteLine = null;
-  let adminZoneLayers = [];
-  let adminCurrentLatLng = null;
-  let adminAutoFollow = true;
-
-  function updateAdminRecenterBtn() {
-    const btn = document.getElementById('btn-admin-recenter');
-    if (!btn) return;
-    if (adminAutoFollow) {
-      btn.classList.remove('active');
-      btn.style.opacity = '0.5';
-      btn.style.background = 'rgba(18, 20, 26, 0.88)';
-      btn.style.borderColor = 'rgba(255, 255, 255, 0.15)';
-    } else {
-      btn.classList.add('active');
-      btn.style.opacity = '1';
-      btn.style.background = '#e82127';
-      btn.style.borderColor = '#e82127';
-    }
-  }
 
   // New Link Modal DOM
   const elModal = document.getElementById('new-link-modal');
@@ -175,126 +153,6 @@
         elTmActiveChip.style.display = 'none';
         elTmActiveChip.innerHTML = '';
       }
-    }
-
-    updateAdminMap(data);
-  }
-
-  function initAdminMiniMap() {
-    const elMap = document.getElementById('admin-mini-map');
-    if (!elMap || !window.L || adminMap) return;
-
-    const tileUrl = window.TESLAMAP_TILE_URL || 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-    const attribution = window.TESLAMAP_ATTRIBUTION || '';
-    const maxZoom = window.TESLAMAP_MAX_ZOOM || 19;
-
-    adminMap = L.map('admin-mini-map', {
-      zoomControl: true,
-      attributionControl: false,
-      scrollWheelZoom: true,
-      dragging: true,
-    }).setView([48.8584, 2.2945], 13);
-
-    L.tileLayer(tileUrl, {
-      maxZoom: maxZoom,
-      subdomains: 'abcd',
-      attribution: attribution
-    }).addTo(adminMap);
-
-    const carIcon = L.divIcon({
-      className: 'admin-car-marker-container',
-      html: `
-        <div id="admin-car-icon" style="width:36px;height:36px;transition:transform 0.3s ease;transform-origin:center center;display:flex;align-items:center;justify-content:center;">
-          <img src="/static/icons/car.svg" style="width:32px;height:32px;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.8));" alt="Car" />
-        </div>
-      `,
-      iconSize: [36, 36],
-      iconAnchor: [18, 18],
-    });
-
-    adminCarMarker = L.marker([48.8584, 2.2945], { icon: carIcon });
-
-    adminRouteLine = L.polyline([], {
-      color: '#3b82f6',
-      weight: 4,
-      opacity: 0.85,
-      lineCap: 'round',
-      lineJoin: 'round',
-    });
-
-    adminMap.on('dragstart', () => {
-      adminAutoFollow = false;
-      updateAdminRecenterBtn();
-    });
-    updateAdminRecenterBtn();
-
-    if (lastStatus) {
-      updateAdminMap(lastStatus);
-    }
-    if (cachedZones && cachedZones.length > 0) {
-      updateAdminMapZones(cachedZones);
-    }
-  }
-
-  function updateAdminMap(status) {
-    if (!adminMap || !status) return;
-    const lat = status.latitude;
-    const lon = status.longitude;
-    const heading = status.heading || 0;
-
-    if (lat && lon && (lat !== 0 || lon !== 0)) {
-      const isFirst = !adminCurrentLatLng;
-      adminCurrentLatLng = [lat, lon];
-
-      if (!adminMap.hasLayer(adminCarMarker)) {
-        adminCarMarker.addTo(adminMap);
-        adminMap.setView(adminCurrentLatLng, 15, { animate: false });
-      } else {
-        adminCarMarker.setLatLng(adminCurrentLatLng);
-        if (adminAutoFollow || isFirst) {
-          adminMap.panTo(adminCurrentLatLng, { animate: true });
-        }
-      }
-
-      const iconEl = document.getElementById('admin-car-icon');
-      if (iconEl) {
-        iconEl.style.transform = `rotate(${heading}deg)`;
-      }
-
-      const coordsEl = document.getElementById('admin-map-coords');
-      if (coordsEl) {
-        coordsEl.textContent = `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
-      }
-
-      // Draw route if active
-      if (status.has_active_route && status.route && status.route.coordinates && status.route.coordinates.length > 0) {
-        if (!adminMap.hasLayer(adminRouteLine)) {
-          adminRouteLine.addTo(adminMap);
-        }
-        adminRouteLine.setLatLngs(status.route.coordinates);
-      } else if (adminMap.hasLayer(adminRouteLine)) {
-        adminMap.removeLayer(adminRouteLine);
-      }
-    }
-  }
-
-  function updateAdminMapZones(zones) {
-    if (!adminMap || !zones) return;
-    adminZoneLayers.forEach(l => adminMap.removeLayer(l));
-    adminZoneLayers = [];
-
-    zones.forEach(z => {
-      const circle = L.circle([z.latitude, z.longitude], {
-        radius: z.radius_meters,
-        color: '#e82127',
-        fillColor: '#e82127',
-        fillOpacity: 0.15,
-        weight: 1.5,
-        dashArray: '4, 4'
-      }).bindTooltip(escapeHtml(z.name), { permanent: false, direction: 'top' });
-      circle.addTo(adminMap);
-      adminZoneLayers.push(circle);
-    });
   }
 
   async function loadLinks() {
@@ -642,22 +500,10 @@
     renderLinks(cachedLinks);
     renderZones(cachedZones);
     renderStatus(lastStatus);
-    if (adminMap) {
-      setTimeout(() => {
-        adminMap.invalidateSize();
-      }, 100);
-    }
   });
 
   // Public admin namespace
   window.TeslaAdmin = {
-    recenterAdminMap: function () {
-      adminAutoFollow = true;
-      updateAdminRecenterBtn();
-      if (adminMap && adminCurrentLatLng) {
-        adminMap.setView(adminCurrentLatLng, Math.max(adminMap.getZoom(), 15), { animate: true });
-      }
-    },
     copyLink: async function (url) {
       await copyToClipboard(url);
       showToast(I18n.t('copied_toast'));
@@ -770,14 +616,10 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    initAdminMiniMap();
     fetchStatus();
     loadLinks();
     loadZones();
     connectAdminSSE();
-    setTimeout(() => {
-      if (adminMap) adminMap.invalidateSize();
-    }, 250);
 
     // Fallback polling every 8s in case SSE is interrupted or unsupported
     setInterval(() => {

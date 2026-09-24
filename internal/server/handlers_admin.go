@@ -44,7 +44,7 @@ func (s *Server) handleLogoutAPI(w http.ResponseWriter, r *http.Request) {
 	jsonResponse(w, http.StatusOK, map[string]bool{"success": true})
 }
 
-func (s *Server) handleAdminPage(w http.ResponseWriter, r *http.Request) {
+func (s *Server) getMapTileConfig() (string, string, int) {
 	tileURL := "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
 	attribution := `&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>`
 	maxZoom := 19
@@ -69,6 +69,11 @@ func (s *Server) handleAdminPage(w http.ResponseWriter, r *http.Request) {
 		attribution = `&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>`
 		maxZoom = 20
 	}
+	return tileURL, attribution, maxZoom
+}
+
+func (s *Server) handleAdminPage(w http.ResponseWriter, r *http.Request) {
+	tileURL, attribution, maxZoom := s.getMapTileConfig()
 
 	data := struct {
 		TileURL     string
@@ -82,6 +87,23 @@ func (s *Server) handleAdminPage(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_ = s.templates.ExecuteTemplate(w, "admin.html", data)
+}
+
+func (s *Server) handleAdminMapPage(w http.ResponseWriter, r *http.Request) {
+	tileURL, attribution, maxZoom := s.getMapTileConfig()
+
+	data := struct {
+		TileURL     string
+		Attribution string
+		MaxZoom     int
+	}{
+		TileURL:     tileURL,
+		Attribution: attribution,
+		MaxZoom:     maxZoom,
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_ = s.templates.ExecuteTemplate(w, "admin_map.html", data)
 }
 
 func (s *Server) handleAdminStatusAPI(w http.ResponseWriter, r *http.Request) {
@@ -104,12 +126,15 @@ func (s *Server) handleAdminStream(w http.ResponseWriter, r *http.Request) {
 	sendUpdate := func() {
 		st := s.stateManager.GetRawState()
 		links, _ := s.db.ListSharedLinks()
+		zones, _ := s.db.ListSafeZones()
 		payload := struct {
 			Status state.VehicleState     `json:"status"`
 			Links  []database.SharedLink `json:"links"`
+			Zones  []database.SafeZone   `json:"zones,omitempty"`
 		}{
 			Status: st,
 			Links:  links,
+			Zones:  zones,
 		}
 		if b, err := json.Marshal(payload); err == nil {
 			fmt.Fprintf(w, "data: %s\n\n", b)

@@ -36,8 +36,9 @@ type VehicleState struct {
 	TeslaMateGeofence string    `json:"teslamate_geofence,omitempty"`
 	UpdatedAt         time.Time `json:"updated_at"`
 
-	HasActiveRoute bool         `json:"has_active_route"`
-	Route          *ActiveRoute `json:"route,omitempty"`
+	HasActiveRoute      bool         `json:"has_active_route"`
+	Route               *ActiveRoute `json:"route,omitempty"`
+	TraveledCoordinates [][]float64  `json:"traveled_coordinates,omitempty"`
 }
 
 // PublicTelemetry is the sanitized data sent over SSE to public links
@@ -254,7 +255,15 @@ func (sm *StateManager) notifySubscribers() {
 func (sm *StateManager) GetRawState() VehicleState {
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
-	return sm.state
+	st := sm.state
+	if len(sm.traveledPoints) > 0 {
+		coords := make([][]float64, 0, len(sm.traveledPoints))
+		for _, pt := range sm.traveledPoints {
+			coords = append(coords, []float64{pt.Latitude, pt.Longitude})
+		}
+		st.TraveledCoordinates = coords
+	}
+	return st
 }
 
 func (sm *StateManager) UpdateLocation(lat, lon, heading, speed float64) {
