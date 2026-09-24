@@ -34,12 +34,17 @@
 
     <div class="telemetry-header">
       <div>
-        <div style="font-size: 11px; text-transform: uppercase; color: var(--md-sys-color-on-surface-variant); font-weight: 600; letter-spacing: 0.5px;">Destination</div>
-        <div class="destination-title" id="dest-title">Chargement du trajet...</div>
+        <div style="font-size: 11px; text-transform: uppercase; color: var(--md-sys-color-on-surface-variant); font-weight: 600; letter-spacing: 0.5px;" data-i18n="destination">Destination</div>
+        <div class="destination-title" id="dest-title" data-i18n="loading_route">Chargement du trajet...</div>
       </div>
-      <div id="status-chip" class="m3-chip">
-        <span class="pulse-dot"></span>
-        <span>Connexion...</span>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div id="status-chip" class="m3-chip">
+          <span class="pulse-dot"></span>
+          <span id="status-chip-text" data-i18n="connecting">Connexion...</span>
+        </div>
+        <button type="button" class="m3-chip" id="btn-lang-toggle" style="cursor: pointer; padding: 0 8px; font-weight: 600;" title="Switch Language">
+          <span id="lang-indicator">EN</span>
+        </button>
       </div>
     </div>
 
@@ -48,8 +53,8 @@
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
       </svg>
-      <div>
-        <strong>Zone Privée</strong> : position exacte masquée (<span id="safe-zone-name"></span>).
+      <div id="safe-zone-text">
+        <strong data-i18n="private_zone">Zone Privée</strong> : position exacte masquée (<span id="safe-zone-name"></span>).
       </div>
     </div>
 
@@ -57,25 +62,25 @@
     <div class="metric-row">
       <div class="metric-box">
         <div class="metric-value" id="eta-val">--:--</div>
-        <div class="metric-label">Arrivée</div>
+        <div class="metric-label" data-i18n="arrival">Arrivée</div>
       </div>
       <div class="metric-box">
         <div class="metric-value" id="min-val">--</div>
-        <div class="metric-label">Restant</div>
+        <div class="metric-label" data-i18n="remaining">Restant</div>
       </div>
       <div class="metric-box">
         <div class="metric-value" id="dist-val">--</div>
-        <div class="metric-label">Distance</div>
+        <div class="metric-label" data-i18n="distance">Distance</div>
       </div>
       <div class="metric-box" id="battery-box" style="display: none;">
         <div class="metric-value" id="battery-val">--%</div>
-        <div class="metric-label">Batterie</div>
+        <div class="metric-label" data-i18n="battery">Batterie</div>
       </div>
     </div>
 
     <!-- Progress bar M3 -->
     <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--md-sys-color-on-surface-variant); margin-bottom: 6px;">
-      <span>Progression du trajet</span>
+      <span data-i18n="trip_progress">Progression du trajet</span>
       <span id="progress-pct" style="font-weight: 600; color: #ffffff;">0%</span>
     </div>
     <div class="m3-progress-container">
@@ -91,9 +96,9 @@
       <line x1="8" y1="2" x2="8" y2="6"></line>
       <line x1="3" y1="10" x2="21" y2="10"></line>
     </svg>
-    <h2 style="font-size: 22px; font-weight: 700; margin-bottom: 12px; color: #ffffff;">Créneau programmé</h2>
+    <h2 style="font-size: 22px; font-weight: 700; margin-bottom: 12px; color: #ffffff;" data-i18n="scheduled_title">Créneau programmé</h2>
     <p style="color: var(--md-sys-color-on-surface-variant); font-size: 14px; line-height: 1.6;">
-      Ce lien de partage s'activera au début du créneau prévu :<br>
+      <span data-i18n="scheduled_desc">Ce lien de partage s'activera au début du créneau prévu :</span><br>
       <strong id="pending-starts-at" style="color: #ffffff; font-size: 15px; display: inline-block; margin-top: 8px;">{{.StartsAt}}</strong>
     </p>
   </div>
@@ -104,8 +109,8 @@
       <circle cx="12" cy="12" r="10"></circle>
       <polyline points="12 6 12 12 16 14"></polyline>
     </svg>
-    <h2 style="font-size: 22px; font-weight: 700; margin-bottom: 12px; color: #ffffff;">Lien expiré</h2>
-    <p style="color: var(--md-sys-color-on-surface-variant); font-size: 14px; line-height: 1.6;">
+    <h2 style="font-size: 22px; font-weight: 700; margin-bottom: 12px; color: #ffffff;" data-i18n="expired_title">Lien expiré</h2>
+    <p style="color: var(--md-sys-color-on-surface-variant); font-size: 14px; line-height: 1.6;" data-i18n="expired_desc">
       Ce lien de partage temporaire n'est plus actif. Le trajet est soit terminé, soit le temps de partage autorisé s'est écoulé.
     </p>
   </div>
@@ -116,6 +121,7 @@
   <script>
     window.TESLAMAP_TOKEN = "{{.Token}}";
   </script>
+  <script src="/static/js/i18n.js"></script>
   <script src="/static/js/live_map.js"></script>
 </body>
 </html>

@@ -1,61 +1,74 @@
 # TeslaMap 🚗🗺️
 
-**TeslaMap** est une application autonome et ultra-légère en **Go** permettant de partager en temps réel la localisation, l'itinéraire, l'heure d'arrivée estimée (ETA) et la progression de votre Tesla connectée à **TeslaMate**, via des **URLs éphémères et sécurisées**.
+[![CI](https://github.com/Rem7474/TeslaMap/actions/workflows/ci.yml/badge.svg)](https://github.com/Rem7474/TeslaMap/actions/workflows/ci.yml)
+[![Docker](https://github.com/Rem7474/TeslaMap/actions/workflows/release.yml/badge.svg)](https://github.com/Rem7474/TeslaMap/actions/workflows/release.yml)
+[![Release](https://img.shields.io/github/v/release/Rem7474/TeslaMap)](https://github.com/Rem7474/TeslaMap/releases)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Conçu avec un design moderne **Material Design 3 (M3)** adapté aux téléphones et tableaux de bord automobiles.
+**TeslaMap** is a lightweight, self-contained **Go** application that lets you share the real-time location, navigation route, estimated arrival time (ETA), and trip progress of your **Tesla** connected to **TeslaMate**, using **secure, ephemeral URLs**.
 
----
-
-## ✨ Fonctionnalités Principales
-
-- **Suivi en temps réel ultra-léger** : Connexion passive au broker MQTT Mosquitto de TeslaMate sans solliciter la batterie du véhicule.
-- **URLs de partage éphémères (`/share/:token`)** :
-  - **Durée relative** configurable (1h, 4h, 12h, 24h, etc.).
-  - **Créneau horaire planifié** : définition d'une heure de début et d'une heure de fin précises (ex: de 14h00 à 16h30) avec affichage d'un écran d'attente soigné tant que le créneau n'a pas débuté.
-  - Option d'**expiration automatique à l'arrivée** (dès que le véhicule passe en `parked`).
-  - Révocation manuelle instantanée en 1 clic.
-- **Protection de la vie privée (Geofencing)** :
-  - Définition de zones protégées (Domicile, Travail) avec rayon en mètres.
-  - Masquage automatique des coordonnées GPS exactes et de la vitesse lorsque le véhicule entre dans une zone privée.
-- **Calcul d'itinéraire et progression** :
-  - Récupération de la destination saisie dans le GPS du véhicule (`active_route`).
-  - Tracé du trajet (polyline) via **OpenRouteService**, **Mapbox** ou **OSRM**.
-  - Calcul dynamique du pourcentage accompli et affichage de la distance / temps restant.
-- **Interface moderne Material Design 3** :
-  - Vue publique optimisée mobile avec Bottom Sheet rétractable et thème sombre OLED.
-  - Icône vectorielle du véhicule avec rotation fluide selon le cap (`heading`).
-  - Panneau d'administration épuré pour piloter les partages et surveiller la télémétrie en direct.
-- **Binaire unique autonome** : Frontend (HTML, CSS, JS, icônes) et base SQLite embarqués directement dans le binaire Go (`go:embed`), sans aucune dépendance externe au runtime.
+Built with a sleek **Material Design 3 (M3)** dark interface optimized for smartphones and automotive telemetry.
 
 ---
 
-## 🚀 Démarrage Rapide
+## ✨ Features
 
-### 1. Mode Simulation (Tester sans voiture ni TeslaMate)
+- **Battery-efficient real-time telemetry**: Passive MQTT ingestion from TeslaMate's Mosquitto broker without waking up or draining the vehicle's battery.
+- **Ephemeral & Secure Share Links (`/share/:token`)**:
+  - **Relative duration (TTL)**: 1h, 4h, 12h, 24h, 48h, or unlimited.
+  - **Scheduled time slots**: Set precise start and end times (e.g. from 2:00 PM to 4:30 PM). Displays a countdown/pending screen prior to window start.
+  - **Auto-expire on arrival**: Automatically revokes access as soon as the vehicle is parked at destination.
+  - **Instant manual revocation**: One-click revocation or deletion from the admin dashboard.
+- **Privacy & Geofencing (Safe Zones)**:
+  - Define custom protected zones (e.g. Home, Work) with an adjustable radius in meters.
+  - Exact GPS coordinates and live speed are automatically masked while the vehicle is inside a safe zone.
+- **Route Tracking & Dynamic Progress**:
+  - Automatically fetches destination details from Tesla in-car GPS navigation (`active_route`).
+  - Computes and plots the route polyline via **OpenRouteService**, **Mapbox Directions**, or **OSRM** with smart caching.
+  - Real-time percentage progress bar, remaining distance, ETA, and estimated battery at destination.
+- **Full Internationalization (i18n)**:
+  - Built-in English and French translations.
+  - Automatic language detection based on browser settings, with manual toggle.
+- **Material Design 3 UI**:
+  - Mobile-first public view with retractable Bottom Sheet and smooth heading rotation for the vehicle icon.
+  - Responsive admin panel with live vehicle status cards, link management, and safe zone controls.
+- **Single Static Binary**:
+  - Frontend assets (HTML, CSS, JS, SVG icons) embedded directly via `go:embed`.
+  - Zero-CGO pure Go SQLite storage (`modernc.org/sqlite`).
+- **Multi-architecture Docker support**:
+  - Prebuilt images available on GitHub Container Registry (GHCR) for `linux/amd64`, `linux/arm64`, and `linux/arm/v7` (ideal for Raspberry Pi).
 
-Vous pouvez tester l'application immédiatement grâce au moteur de simulation intégré :
+---
+
+## 🚀 Quick Start
+
+### 1. Simulation Mode (Test without a car or TeslaMate)
+
+Test the complete application locally with a simulated highway trip:
 
 ```bash
-# Compiler et lancer en mode simulation
+# Clone the repository
+git clone https://github.com/Rem7474/TeslaMap.git
+cd TeslaMap
+
+# Run with simulator enabled
 go run ./cmd/teslamap -simulate
 ```
 
-Ouvrez ensuite votre navigateur sur :
-- **Administration** : `http://localhost:8080/admin` (Mot de passe par défaut : `admin123`)
-- Créez un lien de partage pour ouvrir la vue publique `/share/<token>` et voir le véhicule rouler en direct sur l'autoroute avec calcul d'itinéraire et progression dynamique !
+Open your browser:
+- **Admin Dashboard**: `http://localhost:8080/admin` (Default password: `admin123`)
+- Create a share link and copy the URL to watch the Tesla drive in real time on the live map!
 
 ---
 
-### 2. Déploiement avec Docker & TeslaMate
+### 2. Docker Compose (Alongside TeslaMate)
 
-Ajoutez simplement le service dans le fichier `docker-compose.yml` de votre stack TeslaMate :
+Add the `teslamap` service to your existing TeslaMate `docker-compose.yml`:
 
 ```yaml
 services:
   teslamap:
-    image: teslamap:latest
-    build:
-      context: https://github.com/votre-user/TeslaMap.git
+    image: ghcr.io/rem7474/teslamap:latest
     restart: unless-stopped
     ports:
       - "8080:8080"
@@ -64,18 +77,20 @@ services:
       - DATABASE_PATH=/data/teslamap.db
       - MQTT_BROKER=tcp://mosquitto:1883
       - TESLAMATE_CAR_ID=1
-      - ADMIN_PASSWORD=VotreMotDePasseSecret!
-      - ROUTING_PROVIDER=openrouteservice # ou mapbox, osrm
-      - ROUTING_API_KEY=votre_cle_api_gratuite
+      - ADMIN_PASSWORD=ChooseAStrongPassword!
+      - ROUTING_PROVIDER=openrouteservice # options: openrouteservice, mapbox, osrm
+      - ROUTING_API_KEY=your_free_api_key
       - SIMULATION_MODE=false
     volumes:
       - teslamap-data:/data
+    networks:
+      - default
 
 volumes:
   teslamap-data:
 ```
 
-Puis démarrez le conteneur :
+Start the container:
 
 ```bash
 docker compose up -d teslamap
@@ -83,29 +98,37 @@ docker compose up -d teslamap
 
 ---
 
-## ⚙️ Variables d'Environnement
+## ⚙️ Environment Variables
 
-| Variable | Description | Valeur par défaut |
+| Variable | Description | Default |
 | --- | --- | --- |
-| `PORT` | Port d'écoute HTTP | `8080` |
-| `DATABASE_PATH` | Emplacement du fichier SQLite | `data/teslamap.db` |
-| `MQTT_BROKER` | Adresse du broker MQTT Mosquitto | `tcp://localhost:1883` |
-| `MQTT_USERNAME` | Nom d'utilisateur MQTT (si requis) | *(vide)* |
-| `MQTT_PASSWORD` | Mot de passe MQTT (si requis) | *(vide)* |
-| `TESLAMATE_CAR_ID` | Identifiant du véhicule dans TeslaMate | `1` |
-| `ADMIN_PASSWORD` | Mot de passe d'accès au dashboard `/admin` | `admin123` |
-| `ROUTING_PROVIDER` | Moteur de calcul d'itinéraire (`openrouteservice`, `mapbox`, `osrm`) | `osrm` |
-| `ROUTING_API_KEY` | Clé API pour OpenRouteService ou Mapbox | *(vide)* |
-| `SIMULATION_MODE` | Activer la simulation de conduite | `false` |
+| `PORT` | HTTP server listening port | `8080` |
+| `DATABASE_PATH` | Path to persistent SQLite database file | `data/teslamap.db` |
+| `MQTT_BROKER` | Address of the Mosquitto MQTT broker | `tcp://localhost:1883` |
+| `MQTT_CLIENT_ID` | MQTT client identifier | `teslamap` |
+| `MQTT_USERNAME` | MQTT broker username (optional) | *(empty)* |
+| `MQTT_PASSWORD` | MQTT broker password (optional) | *(empty)* |
+| `TESLAMATE_CAR_ID` | Car ID in TeslaMate | `1` |
+| `ADMIN_PASSWORD` | Password to access `/admin` dashboard | `admin123` |
+| `SESSION_SECRET` | Secret key for signed session cookies | *(randomly generated)* |
+| `ROUTING_PROVIDER` | Routing engine (`openrouteservice`, `mapbox`, `osrm`) | `osrm` |
+| `ROUTING_API_KEY` | API key for OpenRouteService or Mapbox | *(empty)* |
+| `SIMULATION_MODE` | Enable simulated vehicle driving | `false` |
 
 ---
 
-## 🛠️ Développement & Tests
+## 🛠️ Development & Testing
 
 ```bash
-# Lancer les tests unitaires et d'intégration
-go test -v ./...
+# Run unit and integration test suite
+go test -v -race ./...
 
-# Compiler le binaire autonome
-go build -o bin/teslamap ./cmd/teslamap
+# Build standalone binary
+go build -ldflags="-s -w" -o bin/teslamap ./cmd/teslamap
 ```
+
+---
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE).

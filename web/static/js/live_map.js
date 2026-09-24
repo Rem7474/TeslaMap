@@ -96,24 +96,27 @@
     eventSource.onerror = function () {
       console.warn("SSE connection interrupted, retrying in 3s...");
       if (elStatusChip) {
-        elStatusChip.textContent = "Reconnexion...";
+        elStatusChip.innerHTML = `<span class="pulse-dot"></span><span>${I18n.t('reconnecting')}</span>`;
         elStatusChip.className = "m3-chip m3-chip-warning";
       }
     };
   }
 
+  let lastTelemetry = null;
+
   function handleTelemetryUpdate(data) {
+    lastTelemetry = data;
     if (elPendingCard) elPendingCard.style.display = 'none';
     if (elTelemetrySheet) elTelemetrySheet.style.display = 'block';
 
     // 1. Safe Zone Check
     if (data.in_safe_zone) {
       if (elSafeZoneAlert) elSafeZoneAlert.style.display = 'flex';
-      if (elSafeZoneName) elSafeZoneName.textContent = data.safe_zone_name || 'Zone protégée';
+      if (elSafeZoneName) elSafeZoneName.textContent = data.safe_zone_name || I18n.t('private_zone');
       if (map && carMarker && map.hasLayer(carMarker)) {
         map.removeLayer(carMarker);
       }
-      updateStatusChip('Zone Privée', 'm3-chip-warning');
+      updateStatusChip(I18n.t('private_zone'), 'm3-chip-warning');
     } else {
       if (elSafeZoneAlert) elSafeZoneAlert.style.display = 'none';
       if (data.latitude != null && data.longitude != null) {
@@ -140,13 +143,13 @@
     }
 
     // 2. Status Chip
-    let statusText = "À l'arrêt";
+    let statusText = I18n.t('parked');
     let statusClass = "m3-chip";
     if (data.state === 'driving') {
-      statusText = data.speed != null ? `${Math.round(data.speed)} km/h` : "En route";
+      statusText = data.speed != null ? `${Math.round(data.speed)} km/h` : I18n.t('driving');
       statusClass = "m3-chip m3-chip-success";
     } else if (data.state === 'charging') {
-      statusText = "En charge";
+      statusText = I18n.t('charging');
       statusClass = "m3-chip m3-chip-warning";
     }
     if (!data.in_safe_zone) {
@@ -163,8 +166,8 @@
     if (data.has_active_route && data.destination) {
       if (elDestTitle) elDestTitle.textContent = data.destination;
       if (elEtaVal) elEtaVal.textContent = data.eta || '--:--';
-      if (elMinVal) elMinVal.textContent = data.minutes_left != null ? data.minutes_left + ' min' : '--';
-      if (elDistVal) elDistVal.textContent = data.distance_left_km != null ? data.distance_left_km + ' km' : '--';
+      if (elMinVal) elMinVal.textContent = data.minutes_left != null ? data.minutes_left + ' ' + I18n.t('min_unit') : '--';
+      if (elDistVal) elDistVal.textContent = data.distance_left_km != null ? data.distance_left_km + ' ' + I18n.t('km_unit') : '--';
 
       const pct = data.progress_pct != null ? data.progress_pct : 0;
       if (elProgressPct) elProgressPct.textContent = pct + '%';
@@ -198,7 +201,7 @@
         }
       }
     } else {
-      if (elDestTitle) elDestTitle.textContent = "Navigation libre";
+      if (elDestTitle) elDestTitle.textContent = I18n.t('free_nav');
       if (elEtaVal) elEtaVal.textContent = "--:--";
       if (elMinVal) elMinVal.textContent = "--";
       if (elDistVal) elDistVal.textContent = "--";
@@ -217,7 +220,7 @@
 
   function updateStatusChip(text, className) {
     if (elStatusChip) {
-      elStatusChip.textContent = text;
+      elStatusChip.innerHTML = `<span class="pulse-dot"></span><span>${text}</span>`;
       elStatusChip.className = className;
     }
   }
@@ -227,7 +230,30 @@
     if (elExpiredCard) elExpiredCard.style.display = 'block';
   }
 
+  function updateLangIndicator() {
+    const ind = document.getElementById('lang-indicator');
+    if (ind && window.I18n) {
+      ind.textContent = I18n.getLang() === 'fr' ? 'FR' : 'EN';
+    }
+  }
+
+  document.addEventListener('languageChanged', function () {
+    updateLangIndicator();
+    if (lastTelemetry) {
+      handleTelemetryUpdate(lastTelemetry);
+    }
+  });
+
   document.addEventListener('DOMContentLoaded', function () {
+    const langBtn = document.getElementById('btn-lang-toggle');
+    if (langBtn) {
+      langBtn.addEventListener('click', function () {
+        const nextLang = I18n.getLang() === 'fr' ? 'en' : 'fr';
+        I18n.setLang(nextLang);
+      });
+      updateLangIndicator();
+    }
+
     initMap();
     connectSSE();
   });

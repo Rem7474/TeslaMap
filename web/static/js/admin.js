@@ -1,6 +1,9 @@
-// TeslaMap - Admin Dashboard Client
+// TeslaMap - Admin Dashboard Client with i18n
 (function () {
   let selectedDuration = 240; // 4 hours in minutes default
+  let cachedLinks = [];
+  let cachedZones = [];
+  let lastStatus = null;
 
   const elModal = document.getElementById('new-link-modal');
   const elOpenModalBtn = document.getElementById('btn-open-create-modal');
@@ -27,19 +30,31 @@
     try {
       const res = await fetch('/api/admin/status');
       if (!res.ok) return;
-      const data = await res.json();
-      if (elCarState) elCarState.textContent = data.state || 'Inconnu';
-      if (elCarSpeed) elCarSpeed.textContent = Math.round(data.speed || 0) + ' km/h';
-      if (elCarBattery) elCarBattery.textContent = Math.round(data.battery_level || 0) + '%';
-      if (elCarDest) {
-        if (data.has_active_route && data.route) {
-          elCarDest.textContent = data.route.destination + ' (' + Math.round(data.route.distance_to_arrival_km) + ' km)';
-        } else {
-          elCarDest.textContent = 'Aucune (Navigation libre)';
-        }
-      }
+      lastStatus = await res.json();
+      renderStatus(lastStatus);
     } catch (e) {
       console.warn("Status fetch failed", e);
+    }
+  }
+
+  function renderStatus(data) {
+    if (!data) return;
+    if (elCarState) {
+      const stateMap = {
+        driving: I18n.t('driving'),
+        parked: I18n.t('parked'),
+        charging: I18n.t('charging')
+      };
+      elCarState.textContent = stateMap[data.state] || data.state || '--';
+    }
+    if (elCarSpeed) elCarSpeed.textContent = Math.round(data.speed || 0) + ' km/h';
+    if (elCarBattery) elCarBattery.textContent = Math.round(data.battery_level || 0) + '%';
+    if (elCarDest) {
+      if (data.has_active_route && data.route) {
+        elCarDest.textContent = data.route.destination + ' (' + Math.round(data.route.distance_to_arrival_km) + ' ' + I18n.t('km_unit') + ')';
+      } else {
+        elCarDest.textContent = I18n.t('none_free_nav');
+      }
     }
   }
 
@@ -47,8 +62,8 @@
     try {
       const res = await fetch('/api/admin/links');
       if (!res.ok) return;
-      const links = await res.json();
-      renderLinks(links || []);
+      cachedLinks = await res.json() || [];
+      renderLinks(cachedLinks);
     } catch (e) {
       console.error("Links fetch failed", e);
     }
@@ -56,8 +71,8 @@
 
   function renderLinks(links) {
     if (!elLinksContainer) return;
-    if (links.length === 0) {
-      elLinksContainer.innerHTML = '<div style="color:var(--md-sys-color-on-surface-variant);font-size:14px;padding:12px 0;">Aucun lien partagé pour le moment.</div>';
+    if (!links || links.length === 0) {
+      elLinksContainer.innerHTML = `<div style="color:var(--md-sys-color-on-surface-variant);font-size:14px;padding:12px 0;">${I18n.t('no_links')}</div>`;
       return;
     }
 
@@ -67,51 +82,51 @@
       const isExpired = !link.is_active || (link.expires_at && new Date(link.expires_at) < now);
       const fullUrl = window.location.origin + '/share/' + link.token;
       
-      let expText = "Illimité";
+      let expText = I18n.t('unlimited');
       if (link.starts_at && link.expires_at) {
         const startDate = new Date(link.starts_at);
         const expDate = new Date(link.expires_at);
-        expText = "Du " + startDate.toLocaleDateString() + " " + startDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) +
-                  " au " + expDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        expText = I18n.t('from_date') + " " + startDate.toLocaleDateString() + " " + startDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) +
+                  " " + I18n.t('to_date') + " " + expDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
       } else if (link.expires_at) {
         const expDate = new Date(link.expires_at);
-        expText = "Expire le " + expDate.toLocaleDateString() + " à " + expDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        expText = I18n.t('expires_on') + " " + expDate.toLocaleDateString() + " " + I18n.t('at_hour') + " " + expDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
       }
       if (link.expire_on_arrival) {
-        expText += " (ou à l'arrivée)";
+        expText += I18n.t('or_arrival');
       }
 
-      let statusBadge = '<span class="m3-chip m3-chip-success">Actif</span>';
+      let statusBadge = `<span class="m3-chip m3-chip-success">${I18n.t('active')}</span>`;
       if (isPending) {
-        statusBadge = '<span class="m3-chip m3-chip-warning">Programmé</span>';
+        statusBadge = `<span class="m3-chip m3-chip-warning">${I18n.t('scheduled')}</span>`;
       } else if (isExpired) {
-        statusBadge = '<span class="m3-chip m3-chip-error">Expiré / Inactif</span>';
+        statusBadge = `<span class="m3-chip m3-chip-error">${I18n.t('expired')}</span>`;
       }
 
       return `
         <div class="link-card ${isExpired ? 'expired' : ''}">
           <div class="link-card-main">
             <div class="link-card-title">
-              <span>${escapeHtml(link.label || 'Lien de partage')}</span>
+              <span>${escapeHtml(link.label || 'Share link')}</span>
               ${statusBadge}
             </div>
             <div class="link-card-meta">
               <span>⏱ ${expText}</span>
-              <span>👁 ${link.view_count || 0} vues</span>
+              <span>👁 ${link.view_count || 0} ${I18n.t('views')}</span>
               <span style="font-family:monospace;font-size:12px;opacity:0.8;">${link.token}</span>
             </div>
           </div>
           <div class="link-card-actions">
             <button class="m3-button m3-button-filled" onclick="TeslaAdmin.copyLink('${fullUrl}')">
-              📋 Copier l'URL
+              ${I18n.t('copy_url')}
             </button>
             ${!isExpired ? `
               <button class="m3-button m3-button-outlined" onclick="TeslaAdmin.revokeLink(${link.id})">
-                Révoquer
+                ${I18n.t('revoke')}
               </button>
             ` : ''}
             <button class="m3-button m3-button-text m3-button-danger" onclick="TeslaAdmin.deleteLink(${link.id})">
-              Supprimer
+              ${I18n.t('delete')}
             </button>
           </div>
         </div>
@@ -123,8 +138,8 @@
     try {
       const res = await fetch('/api/admin/zones');
       if (!res.ok) return;
-      const zones = await res.json();
-      renderZones(zones || []);
+      cachedZones = await res.json() || [];
+      renderZones(cachedZones);
     } catch (e) {
       console.error("Zones fetch failed", e);
     }
@@ -132,8 +147,8 @@
 
   function renderZones(zones) {
     if (!elZonesContainer) return;
-    if (zones.length === 0) {
-      elZonesContainer.innerHTML = '<div style="color:var(--md-sys-color-on-surface-variant);font-size:14px;padding:8px 0;">Aucune zone protégée définie.</div>';
+    if (!zones || zones.length === 0) {
+      elZonesContainer.innerHTML = `<div style="color:var(--md-sys-color-on-surface-variant);font-size:14px;padding:8px 0;">${I18n.t('no_zones')}</div>`;
       return;
     }
 
@@ -142,11 +157,11 @@
         <div>
           <strong>${escapeHtml(z.name)}</strong>
           <span style="font-size:12px;color:var(--md-sys-color-on-surface-variant);margin-left:8px;">
-            (Rayon: ${z.radius_meters}m • GPS: ${z.latitude.toFixed(4)}, ${z.longitude.toFixed(4)})
+            (${I18n.t('radius')}: ${z.radius_meters}m • ${I18n.t('gps')}: ${z.latitude.toFixed(4)}, ${z.longitude.toFixed(4)})
           </span>
         </div>
         <button class="m3-button m3-button-text m3-button-danger" onclick="TeslaAdmin.deleteZone(${z.id})">
-          Supprimer
+          ${I18n.t('delete')}
         </button>
       </div>
     `).join('');
@@ -227,7 +242,7 @@
       const showBattery = document.getElementById('input-show-battery').checked;
 
       const payload = {
-        label: label || 'Partage de trajet',
+        label: label || 'Trip Share',
         expire_on_arrival: expireOnArrival,
         show_speed: showSpeed,
         show_battery: showBattery
@@ -237,11 +252,11 @@
         payload.duration_minutes = selectedDuration;
       } else {
         if (!inputStartsAt.value || !inputExpiresAt.value) {
-          alert("Veuillez sélectionner l'heure de début et l'heure de fin du créneau.");
+          alert(I18n.getLang() === 'fr' ? "Veuillez sélectionner l'heure de début et l'heure de fin du créneau." : "Please select start and end time for the slot.");
           return;
         }
         if (new Date(inputExpiresAt.value) <= new Date(inputStartsAt.value)) {
-          alert("L'heure de fin doit être postérieure à l'heure de début.");
+          alert(I18n.getLang() === 'fr' ? "L'heure de fin doit être postérieure à l'heure de début." : "End time must be after start time.");
           return;
         }
         payload.starts_at = inputStartsAt.value;
@@ -256,10 +271,10 @@
         });
         if (res.ok) {
           elModal.classList.remove('open');
-          showToast('Lien de partage créé !');
+          showToast(I18n.t('link_created'));
           loadLinks();
         } else {
-          alert("Erreur lors de la création du lien");
+          alert("Error creating link");
         }
       } catch (e) {
         console.error("Create link error", e);
@@ -267,39 +282,50 @@
     });
   }
 
+  // Re-render when language changes
+  document.addEventListener('languageChanged', () => {
+    renderLinks(cachedLinks);
+    renderZones(cachedZones);
+    renderStatus(lastStatus);
+  });
+
   // Public admin namespace
   window.TeslaAdmin = {
     copyLink: function (url) {
       navigator.clipboard.writeText(url).then(() => {
-        showToast('URL copiée dans le presse-papiers !');
+        showToast(I18n.t('copied_toast'));
       });
     },
     revokeLink: async function (id) {
-      if (!confirm("Voulez-vous révoquer ce lien immédiatement ?")) return;
+      const confirmMsg = I18n.getLang() === 'fr' ? "Voulez-vous révoquer ce lien immédiatement ?" : "Do you want to revoke this link immediately?";
+      if (!confirm(confirmMsg)) return;
       await fetch('/api/admin/links/' + id + '/revoke', { method: 'POST' });
-      showToast('Lien révoqué');
+      showToast(I18n.t('link_revoked'));
       loadLinks();
     },
     deleteLink: async function (id) {
-      if (!confirm("Supprimer définitivement ce lien ?")) return;
+      const confirmMsg = I18n.getLang() === 'fr' ? "Supprimer définitivement ce lien ?" : "Permanently delete this link?";
+      if (!confirm(confirmMsg)) return;
       await fetch('/api/admin/links/' + id, { method: 'DELETE' });
-      showToast('Lien supprimé');
+      showToast(I18n.t('link_deleted'));
       loadLinks();
     },
     deleteZone: async function (id) {
-      if (!confirm("Supprimer cette zone protégée ?")) return;
+      const confirmMsg = I18n.getLang() === 'fr' ? "Supprimer cette zone protégée ?" : "Delete this protected zone?";
+      if (!confirm(confirmMsg)) return;
       await fetch('/api/admin/zones/' + id, { method: 'DELETE' });
-      showToast('Zone supprimée');
+      showToast(I18n.t('zone_deleted'));
       loadZones();
     },
     createZone: async function () {
-      const name = prompt("Nom de la zone (ex: Domicile, Travail) :");
+      const isFr = I18n.getLang() === 'fr';
+      const name = prompt(isFr ? "Nom de la zone (ex: Domicile, Travail) :" : "Zone name (e.g. Home, Office):");
       if (!name) return;
-      const lat = parseFloat(prompt("Latitude (ex: 48.8584) :"));
-      const lon = parseFloat(prompt("Longitude (ex: 2.2945) :"));
-      const radius = parseFloat(prompt("Rayon en mètres (ex: 400) :", "400"));
+      const lat = parseFloat(prompt(isFr ? "Latitude (ex: 48.8584) :" : "Latitude (e.g. 48.8584):"));
+      const lon = parseFloat(prompt(isFr ? "Longitude (ex: 2.2945) :" : "Longitude (e.g. 2.2945):"));
+      const radius = parseFloat(prompt(isFr ? "Rayon en mètres (ex: 400) :" : "Radius in meters (e.g. 400):", "400"));
       if (isNaN(lat) || isNaN(lon) || isNaN(radius)) {
-        alert("Valeurs GPS ou rayon invalides");
+        alert(isFr ? "Valeurs GPS ou rayon invalides" : "Invalid GPS or radius values");
         return;
       }
       await fetch('/api/admin/zones', {
@@ -307,7 +333,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, latitude: lat, longitude: lon, radius_meters: radius })
       });
-      showToast('Zone protégée enregistrée');
+      showToast(I18n.t('zone_saved'));
       loadZones();
     },
     logout: async function () {
