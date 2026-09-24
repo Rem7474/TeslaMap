@@ -3,6 +3,7 @@ package state
 import (
 	"path/filepath"
 	"testing"
+	"time"
 
 	"teslamap/internal/database"
 )
@@ -79,3 +80,147 @@ func TestSafeZoneMasking(t *testing.T) {
 		t.Errorf("expected coordinates to be present outside safe zone")
 	}
 }
+
+func TestAutoExpire_ParkedMidTripDoesNotExpire(t *testing.T) {
+	tmpDir := t.TempDir()
+	db, err := database.Open(filepath.Join(tmpDir, "test.db"))
+	if err != nil {
+		t.Fatalf("failed to open db: %v", err)
+	}
+	defer db.Close()
+
+	sm := NewStateManager(nil, db)
+
+	// Link configured with expire_on_arrival = true
+	link, err := db.CreateSharedLink("Roadtrip", nil, nil, true, true, true)
+	if err != nil {
+		t.Fatalf("failed to create link: %v", err)
+	}
+
+	// 1. Vehicle is driving towards Lyon (45.75, 4.85)
+	sm.UpdateState("driving")
+	sm.UpdateLocation(47.79, 3.57, 180, 110) // Auxerre (~250km from Lyon)
+	sm.UpdateActiveRoute("Lyon", 45.75, 4.85, 120, 250.0, 45)
+
+	// 2. Vehicle parks at a Supercharger / rest stop (still 250km from Lyon)
+	sm.UpdateState("parked")
+
+	// 3. Verify link is STILL ACTIVE
+	reloaded, err := db.GetSharedLinkByToken(link.Token)
+	if err != nil || reloaded == nil {
+		t.Fatalf("failed to fetch link: %v", err)
+	}
+	if !reloaded.IsActive {
+		t.Errorf("expected link to remain active when parked mid-trip (far from destination)")
+	}
+}
+
+func TestAutoExpire_ParkedAtDestinationExpiresImmediately(t *testing.T) {
+	tmpDir := t.TempDir()
+	db, err := database.Open(filepath.Join(tmpDir, "test.db"))
+	if err != nil {
+		t.Fatalf("failed to open db: %v", err)
+	}
+	defer db.Close()
+
+	sm := NewStateManager(nil, db)
+
+	link, err := db.CreateSharedLink("Destination Test", nil, nil, true, true, true)
+	if err != nil {
+		t.Fatalf("failed to create link: %v", err)
+	}
+
+	// 1. Driving near destination (48.8584, 2.2945)
+	destLat, destLon := 48.8584, 2.2945
+	sm.UpdateState("driving")
+	sm.UpdateLocation(48.8585, 2.2945, 90, 20) // ~11m from destination
+	sm.UpdateActiveRoute("Eiffel Tower", destLat, destLon, 1, 0.1, 80)
+
+	// 2. Arrives and parks
+	sm.UpdateState("parked")
+
+	// 3. Verify link is deactivated immediately
+	reloaded, err := db.GetSharedLinkByToken(link.Token)
+	if err != nil || reloaded == nil {
+		t.Fatalf("failed to fetch link: %v", err)
+	}
+	if reloaded.IsActive {
+		t.Errorf("expected link to be deactivated immediately upon parking at destination")
+	}
+}
+
+func TestAutoExpire_FreeDrivingGracePeriod(t *testing.T) {
+	tmpDir := t.TempDir()
+	db, err := database.Open(filepath.Join(tmpDir, "test.db"))
+	if err != nil {
+		t.Fatalf("failed to open db: %v", err)
+	}
+	defer db.Close()
+
+	sm := NewStateManager(nil, db)
+	// Fast grace duration for test: 50ms
+	sm.SetParkGraceDuration(50 * time.Millisecond)
+
+	link, err := db.CreateSharedLink("Free Driving", nil, nil, true, true, true)
+	if err != nil {
+		t.Fatalf("failed to create link: %v", err)
+	}
+
+	// 1. Driving without active route
+	sm.UpdateState("driving")
+	sm.UpdateLocation(48.8584, 2.2945, 90, 50)
+
+	// 2. Parks
+	sm.UpdateState("parked")
+
+	// Immediately, link must still be active (grace period)
+	reloaded, _ := db.GetSharedLinkByToken(link.Token)
+	if !reloaded.IsActive {
+		t.Errorf("expected link to stay active during grace period")
+	}
+
+	// Wait for grace timer to fire (80ms > 50ms)
+	time.Sleep(80 * time.Millisecond)
+
+	reloaded, _ = db.GetSharedLinkByToken(link.Token)
+	if reloaded.IsActive {
+		t.Errorf("expected link to expire after grace period elapsed")
+	}
+}
+
+func TestAutoExpire_FreeDrivingResumesDrivingCancelsGraceTimer(t *testing.T) {
+	tmpDir := t.TempDir()
+	db, err := database.Open(filepath.Join(tmpDir, "test.db"))
+	if err != nil {
+		t.Fatalf("failed to open db: %v", err)
+	}
+	defer db.Close()
+
+	sm := NewStateManager(nil, db)
+	// Grace duration 100ms
+	sm.SetParkGraceDuration(100 * time.Millisecond)
+
+	link, err := db.CreateSharedLink("Resume Test", nil, nil, true, true, true)
+	if err != nil {
+		t.Fatalf("failed to create link: %v", err)
+	}
+
+	// 1. Driving
+	sm.UpdateState("driving")
+
+	// 2. Quick stop (parks)
+	sm.UpdateState("parked")
+
+	// 3. Resumes driving after 30ms (before 100ms timer)
+	time.Sleep(30 * time.Millisecond)
+	sm.UpdateState("driving")
+
+	// Wait past initial 100ms (120ms total)
+	time.Sleep(90 * time.Millisecond)
+
+	reloaded, _ := db.GetSharedLinkByToken(link.Token)
+	if !reloaded.IsActive {
+		t.Errorf("expected link to remain active because driving resumed before grace timer fired")
+	}
+}
+
