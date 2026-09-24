@@ -32,6 +32,13 @@
       min_unit: "min",
       km_unit: "km",
       recenter: "Recentrer",
+      trip_summary_title: "Résumé du trajet",
+      total_distance: "Distance totale",
+      total_duration: "Temps total",
+      avg_speed: "Vitesse moyenne",
+      arrival_time: "Arrivée",
+      closed_title: "Lien définitivement clôturé",
+      closed_desc: "Ce lien a expiré depuis plus de 2 heures. Par mesure de confidentialité, le suivi et les données de ce trajet ne sont plus consultables.",
 
       // Admin Dashboard
       mqtt_connected: "MQTT Connecté",
@@ -150,6 +157,13 @@
       min_unit: "min",
       km_unit: "km",
       recenter: "Re-center",
+      trip_summary_title: "Trip Summary",
+      total_distance: "Total Distance",
+      total_duration: "Total Duration",
+      avg_speed: "Average Speed",
+      arrival_time: "Arrival Time",
+      closed_title: "Share Link Closed",
+      closed_desc: "This share link expired over 2 hours ago. For privacy reasons, tracking and telemetry data are no longer accessible.",
 
       // Admin Dashboard
       mqtt_connected: "MQTT Connected",

@@ -325,3 +325,38 @@ func TestIsPointNearPolyline(t *testing.T) {
 		t.Errorf("expected empty coords to return false")
 	}
 }
+
+func TestTripSummaryAndActiveInterest(t *testing.T) {
+	tmpDir := t.TempDir()
+	db, err := database.Open(filepath.Join(tmpDir, "test.db"))
+	if err != nil {
+		t.Fatalf("failed to open db: %v", err)
+	}
+	defer db.Close()
+
+	sm := NewStateManager(nil, db)
+
+	// No subscribers, no links -> no active interest
+	if sm.HasActiveInterest() {
+		t.Errorf("expected no active interest initially")
+	}
+
+	// Create an active link -> HasActiveInterest should be true
+	link, _ := db.CreateSharedLink("Trip 1", nil, nil, false, true, true)
+	if !sm.HasActiveInterest() {
+		t.Errorf("expected active interest after creating link")
+	}
+
+	// Drive and record positions
+	sm.UpdateLocation(48.8584, 2.2945, 90, 50)
+	time.Sleep(10 * time.Millisecond)
+	sm.UpdateLocation(48.8650, 2.3000, 90, 60)
+
+	telem := sm.GetPublicTelemetry(link)
+	if telem.TripSummary == nil {
+		t.Fatalf("expected TripSummary to be populated")
+	}
+	if telem.TripSummary.TotalDistanceKm <= 0 {
+		t.Errorf("expected TotalDistanceKm > 0, got %f", telem.TripSummary.TotalDistanceKm)
+	}
+}

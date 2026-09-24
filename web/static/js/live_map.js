@@ -113,6 +113,14 @@
   const elRecenterBar = document.getElementById('recenter-bar-container');
   const elRecenterBtn = document.getElementById('recenter-btn');
   const elExpiredCard = document.getElementById('expired-card');
+  const elClosedCard = document.getElementById('closed-card');
+  const elTripSummarySection = document.getElementById('trip-summary-section');
+  const elSummaryDistance = document.getElementById('summary-distance');
+  const elSummaryDuration = document.getElementById('summary-duration');
+  const elSummarySpeedBox = document.getElementById('summary-speed-box');
+  const elSummarySpeed = document.getElementById('summary-speed');
+  const elSummaryArrivalBox = document.getElementById('summary-arrival-box');
+  const elSummaryArrival = document.getElementById('summary-arrival');
   const elPendingCard = document.getElementById('pending-card');
   const elPendingStartsAt = document.getElementById('pending-starts-at');
   const elTelemetrySheet = document.getElementById('telemetry-sheet');
@@ -530,7 +538,59 @@
     if (elTelemetrySheet) elTelemetrySheet.style.display = 'none';
     if (elRecenterBar) elRecenterBar.classList.remove('visible');
     if (elPendingCard) elPendingCard.style.display = 'none';
+
+    if (window.TESLAMAP_IS_DEFINITELY_CLOSED) {
+      if (elExpiredCard) elExpiredCard.style.display = 'none';
+      if (elClosedCard) elClosedCard.style.display = 'block';
+      if (carMarker && map && map.hasLayer(carMarker)) map.removeLayer(carMarker);
+      if (routeLine && map && map.hasLayer(routeLine)) map.removeLayer(routeLine);
+      if (traveledLine && map && map.hasLayer(traveledLine)) map.removeLayer(traveledLine);
+      if (destMarker && map && map.hasLayer(destMarker)) map.removeLayer(destMarker);
+      return;
+    }
+
+    if (elClosedCard) elClosedCard.style.display = 'none';
     if (elExpiredCard) elExpiredCard.style.display = 'block';
+
+    // Render trip summary stats if available
+    const telem = lastTelemetry || window.TESLAMAP_INITIAL_TELEMETRY;
+    if (telem && telem.trip_summary && elTripSummarySection) {
+      const summary = telem.trip_summary;
+      elTripSummarySection.style.display = 'block';
+
+      if (elSummaryDistance) {
+        elSummaryDistance.textContent = (summary.total_distance_km !== undefined ? summary.total_distance_km.toFixed(1) : '0.0') + ' ' + I18n.t('km_unit');
+      }
+
+      if (elSummaryDuration) {
+        const mins = summary.total_duration_minutes || 0;
+        if (mins >= 60) {
+          const h = Math.floor(mins / 60);
+          const m = mins % 60;
+          elSummaryDuration.textContent = `${h}h ${m < 10 ? '0' : ''}${m}m`;
+        } else {
+          elSummaryDuration.textContent = `${mins} ${I18n.t('min_unit')}`;
+        }
+      }
+
+      if (elSummarySpeedBox && elSummarySpeed) {
+        if (summary.avg_speed_kmh !== undefined && summary.avg_speed_kmh !== null) {
+          elSummarySpeedBox.style.display = 'block';
+          elSummarySpeed.textContent = Math.round(summary.avg_speed_kmh) + ' km/h';
+        } else {
+          elSummarySpeedBox.style.display = 'none';
+        }
+      }
+
+      if (elSummaryArrivalBox && elSummaryArrival) {
+        if (summary.completed_at) {
+          elSummaryArrivalBox.style.display = 'block';
+          elSummaryArrival.textContent = summary.completed_at;
+        } else {
+          elSummaryArrivalBox.style.display = 'none';
+        }
+      }
+    }
 
     // Keep carMarker, traveledLine, routeLine and destMarker intact on the map!
     // Center map view on vehicle's last known position
@@ -551,6 +611,9 @@
     if (lastTelemetry) {
       handleTelemetryUpdate(lastTelemetry);
     }
+    if (window.TESLAMAP_IS_EXPIRED || window.TESLAMAP_IS_DEFINITELY_CLOSED) {
+      showExpiredScreen();
+    }
   });
 
   document.addEventListener('DOMContentLoaded', function () {
@@ -564,6 +627,11 @@
     }
 
     initMap();
+
+    if (window.TESLAMAP_IS_DEFINITELY_CLOSED) {
+      showExpiredScreen();
+      return;
+    }
 
     // Render initial telemetry snapshot if provided by server (for both live and expired links)
     if (window.TESLAMAP_INITIAL_TELEMETRY) {

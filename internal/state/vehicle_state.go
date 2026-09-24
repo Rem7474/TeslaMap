@@ -2,6 +2,7 @@ package state
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"math"
 	"strings"
@@ -55,9 +56,17 @@ type PublicTelemetry struct {
 	MinutesLeft    int         `json:"minutes_left,omitempty"`
 	DistanceLeftKm float64     `json:"distance_left_km,omitempty"`
 	ProgressPct    float64     `json:"progress_pct"`
-	Coordinates         [][]float64 `json:"route_coordinates,omitempty"`
-	TraveledCoordinates [][]float64 `json:"traveled_coordinates,omitempty"`
-	UpdatedAt           string      `json:"updated_at"`
+	Coordinates         [][]float64  `json:"route_coordinates,omitempty"`
+	TraveledCoordinates [][]float64  `json:"traveled_coordinates,omitempty"`
+	TripSummary         *TripSummary `json:"trip_summary,omitempty"`
+	UpdatedAt           string       `json:"updated_at"`
+}
+
+type TripSummary struct {
+	TotalDistanceKm      float64  `json:"total_distance_km"`
+	TotalDurationMinutes int      `json:"total_duration_minutes"`
+	AvgSpeedKmh          *float64 `json:"avg_speed_kmh,omitempty"`
+	CompletedAt          string   `json:"completed_at,omitempty"`
 }
 
 type TraveledPoint struct {
@@ -150,6 +159,14 @@ func (sm *StateManager) startParkGraceTimer() {
 func (sm *StateManager) expireLinksNow() {
 	sm.cancelParkGraceTimer()
 	if sm.db != nil {
+		if links, err := sm.db.ListActiveExpireOnArrivalLinks(); err == nil {
+			for _, link := range links {
+				telemetry := sm.GetPublicTelemetry(&link)
+				if b, err := json.Marshal(telemetry); err == nil {
+					_ = sm.db.SaveLinkLastTelemetry(link.Token, string(b))
+				}
+			}
+		}
 		if err := sm.db.ExpireOnArrivalLinks(); err != nil {
 			log.Printf("[StateManager] Error expiring arrival links: %v\n", err)
 		}
@@ -157,11 +174,50 @@ func (sm *StateManager) expireLinksNow() {
 	sm.notifySubscribers()
 }
 
+func (sm *StateManager) HasActiveInterest() bool {
+	sm.subscribersMu.Lock()
+	hasSubs := len(sm.subscribers) > 0
+	sm.subscribersMu.Unlock()
+	if hasSubs {
+		return true
+	}
+
+	if sm.db != nil {
+		hasActiveLinks, err := sm.db.HasActiveSharedLinks()
+		if err == nil && hasActiveLinks {
+			return true
+		}
+	}
+	return false
+}
+
+func (sm *StateManager) TriggerRouteCalculation() {
+	sm.mu.RLock()
+	hasRoute := sm.state.HasActiveRoute && sm.state.Route != nil
+	var carLat, carLon, destLat, destLon, distKm, mins float64
+	var noCoords bool
+	if hasRoute {
+		carLat = sm.state.Latitude
+		carLon = sm.state.Longitude
+		destLat = sm.state.Route.Latitude
+		destLon = sm.state.Route.Longitude
+		distKm = sm.state.Route.DistanceToArrival
+		mins = sm.state.Route.MinutesToArrival
+		noCoords = len(sm.state.Route.Coordinates) == 0
+	}
+	sm.mu.RUnlock()
+
+	if hasRoute && noCoords && sm.router != nil && (carLat != 0 || carLon != 0) {
+		go sm.ensureRoutePolyline(carLat, carLon, destLat, destLon, distKm, mins)
+	}
+}
+
 func (sm *StateManager) Subscribe() chan struct{} {
 	ch := make(chan struct{}, 1)
 	sm.subscribersMu.Lock()
 	sm.subscribers[ch] = struct{}{}
 	sm.subscribersMu.Unlock()
+	sm.TriggerRouteCalculation()
 	return ch
 }
 
@@ -239,7 +295,7 @@ func (sm *StateManager) UpdateLocation(lat, lon, heading, speed float64) {
 
 	// If route is active, calculate routing polyline if missing or if off-route (> 250m while driving)
 	shouldReroute := !hasRouteCoords || (isOffRoute && time.Since(sm.lastRouteCalc) >= 20*time.Second)
-	if routeActive && sm.router != nil && shouldReroute {
+	if routeActive && sm.router != nil && shouldReroute && sm.HasActiveInterest() {
 		if isOffRoute {
 			log.Println("[StateManager] Vehicle deviated from planned route (> 250m, autoroute/nationale switch). Recalculating route...")
 		}
@@ -407,7 +463,7 @@ func (sm *StateManager) UpdateActiveRoute(destination string, lat, lon, minutes,
 	sm.mu.Unlock()
 
 	shouldCalc := isNewRoute || len(existingCoords) == 0 || (distanceJump && time.Since(sm.lastRouteCalc) >= 20*time.Second)
-	if sm.router != nil && (carLat != 0 || carLon != 0) && shouldCalc {
+	if sm.router != nil && (carLat != 0 || carLon != 0) && shouldCalc && sm.HasActiveInterest() {
 		if distanceJump {
 			log.Printf("[StateManager] Tesla reported significant distance change (rerouted by Tesla). Recalculating route polyline...\n")
 		}
@@ -490,24 +546,73 @@ func (sm *StateManager) GetPublicTelemetry(link *database.SharedLink) PublicTele
 		UpdatedAt:      st.UpdatedAt.Format(time.RFC3339),
 	}
 
+	// Filter traveled points for this link (respecting StartsAt validity)
+	var filteredPts []TraveledPoint
+	var traveledCoords [][]float64
+	for _, pt := range traveledPts {
+		if link.StartsAt != nil && pt.Timestamp.Before(*link.StartsAt) {
+			continue
+		}
+		filteredPts = append(filteredPts, pt)
+		if !inSafeZone {
+			traveledCoords = append(traveledCoords, []float64{pt.Latitude, pt.Longitude})
+		}
+	}
+
 	// Geofence obfuscation: if inside a safe zone or TeslaMate geofence, omit precise lat/lon
 	if !inSafeZone {
 		lat := st.Latitude
 		lon := st.Longitude
 		res.Latitude = &lat
 		res.Longitude = &lon
-
-		// Filter traveled points for this link (respecting StartsAt validity)
-		var traveledCoords [][]float64
-		for _, pt := range traveledPts {
-			if link.StartsAt != nil && pt.Timestamp.Before(*link.StartsAt) {
-				continue
-			}
-			traveledCoords = append(traveledCoords, []float64{pt.Latitude, pt.Longitude})
-		}
 		if len(traveledCoords) > 0 {
 			res.TraveledCoordinates = traveledCoords
 		}
+	}
+
+	// Calculate Trip Summary metrics
+	var totalDistMeters float64
+	for i := 1; i < len(filteredPts); i++ {
+		totalDistMeters += geofence.HaversineDistance(filteredPts[i-1].Latitude, filteredPts[i-1].Longitude, filteredPts[i].Latitude, filteredPts[i].Longitude)
+	}
+	totalDistKm := totalDistMeters / 1000.0
+	if st.Route != nil && st.Route.InitialDistance > 0 {
+		covered := st.Route.InitialDistance - st.Route.DistanceToArrival
+		if covered > totalDistKm {
+			totalDistKm = covered
+		}
+	}
+
+	var totalDurationMinutes int
+	if len(filteredPts) >= 2 {
+		startTime := filteredPts[0].Timestamp
+		endTime := filteredPts[len(filteredPts)-1].Timestamp
+		totalDurationMinutes = int(math.Round(endTime.Sub(startTime).Minutes()))
+	} else if link.StartsAt != nil {
+		totalDurationMinutes = int(math.Round(now.Sub(*link.StartsAt).Minutes()))
+	}
+	if totalDurationMinutes < 0 {
+		totalDurationMinutes = 0
+	}
+
+	var avgSpeed *float64
+	if link.ShowSpeed && totalDurationMinutes > 0 && totalDistKm > 0.1 {
+		spd := math.Round((totalDistKm/(float64(totalDurationMinutes)/60.0))*10) / 10
+		if spd > 0 && spd < 300 {
+			avgSpeed = &spd
+		}
+	}
+
+	completedAt := now.Format("15:04")
+	if len(filteredPts) > 0 {
+		completedAt = filteredPts[len(filteredPts)-1].Timestamp.Local().Format("15:04")
+	}
+
+	res.TripSummary = &TripSummary{
+		TotalDistanceKm:      math.Round(totalDistKm*10) / 10,
+		TotalDurationMinutes: totalDurationMinutes,
+		AvgSpeedKmh:          avgSpeed,
+		CompletedAt:          completedAt,
 	}
 
 	if link.ShowSpeed && !inSafeZone {

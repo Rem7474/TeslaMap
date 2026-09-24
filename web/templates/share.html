@@ -109,15 +109,52 @@
     </p>
   </div>
 
-  <!-- Expired Link Overlay (Hidden by default) -->
-  <div class="m3-card expired-card" id="expired-card" style="display: {{if .IsExpired}}block{{else}}none{{end}};">
+  <!-- Expired Link Overlay (Hidden by default or shown if expired & within grace period) -->
+  <div class="m3-card expired-card" id="expired-card" style="display: {{if and .IsExpired (not .IsDefinitelyClosed)}}block{{else}}none{{end}};">
     <svg class="expired-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <circle cx="12" cy="12" r="10"></circle>
       <polyline points="12 6 12 12 16 14"></polyline>
     </svg>
-    <h2 style="font-size: 22px; font-weight: 700; margin-bottom: 12px; color: #ffffff;" data-i18n="expired_title">Lien expiré</h2>
-    <p style="color: var(--md-sys-color-on-surface-variant); font-size: 14px; line-height: 1.6;" data-i18n="expired_desc">
-      Ce lien de partage temporaire n'est plus actif. Le trajet est soit terminé, soit le temps de partage autorisé s'est écoulé.
+    <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 6px; color: #ffffff;" data-i18n="expired_title">Trajet terminé</h2>
+    <p style="color: var(--md-sys-color-on-surface-variant); font-size: 13px; line-height: 1.5; margin-bottom: 12px;" data-i18n="expired_desc">
+      Ce lien de partage temporaire est arrivé à son terme.
+    </p>
+
+    <!-- Trip Summary Section -->
+    <div id="trip-summary-section" style="display: none; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px; margin-top: 8px;">
+      <div style="font-size: 11px; text-transform: uppercase; font-weight: 600; color: var(--md-sys-color-primary); letter-spacing: 0.5px; margin-bottom: 8px;" data-i18n="trip_summary_title">
+        Résumé du trajet
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+        <div class="metric-box" style="padding: 8px 10px; background: rgba(255,255,255,0.04); border-radius: 8px;">
+          <div class="metric-value" id="summary-distance" style="font-size: 16px; font-weight: 700;">--</div>
+          <div class="metric-label" style="font-size: 11px;" data-i18n="total_distance">Distance totale</div>
+        </div>
+        <div class="metric-box" style="padding: 8px 10px; background: rgba(255,255,255,0.04); border-radius: 8px;">
+          <div class="metric-value" id="summary-duration" style="font-size: 16px; font-weight: 700;">--</div>
+          <div class="metric-label" style="font-size: 11px;" data-i18n="total_duration">Temps total</div>
+        </div>
+        <div class="metric-box" id="summary-speed-box" style="display: none; padding: 8px 10px; background: rgba(255,255,255,0.04); border-radius: 8px;">
+          <div class="metric-value" id="summary-speed" style="font-size: 16px; font-weight: 700;">--</div>
+          <div class="metric-label" style="font-size: 11px;" data-i18n="avg_speed">Vitesse moyenne</div>
+        </div>
+        <div class="metric-box" id="summary-arrival-box" style="display: none; padding: 8px 10px; background: rgba(255,255,255,0.04); border-radius: 8px;">
+          <div class="metric-value" id="summary-arrival" style="font-size: 16px; font-weight: 700;">--</div>
+          <div class="metric-label" style="font-size: 11px;" data-i18n="arrival_time">Arrivée</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Definitely Closed Link Overlay (> 2 hours post-expiration) -->
+  <div class="m3-card expired-card definitely-closed-card" id="closed-card" style="display: {{if .IsDefinitelyClosed}}block{{else}}none{{end}};">
+    <svg class="expired-icon" style="color: var(--md-sys-color-on-surface-variant);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+      <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+    </svg>
+    <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 8px; color: #ffffff;" data-i18n="closed_title">Lien définitivement clôturé</h2>
+    <p style="color: var(--md-sys-color-on-surface-variant); font-size: 13px; line-height: 1.6;" data-i18n="closed_desc">
+      Ce lien de partage est définitivement fermé. Par mesure de confidentialité, le suivi et les données de ce trajet ne sont plus consultables.
     </p>
   </div>
 
@@ -127,6 +164,7 @@
   <script>
     window.TESLAMAP_TOKEN = "{{.Token}}";
     window.TESLAMAP_IS_EXPIRED = {{.IsExpired}};
+    window.TESLAMAP_IS_DEFINITELY_CLOSED = {{.IsDefinitelyClosed}};
     window.TESLAMAP_IS_PENDING = {{.IsPending}};
     window.TESLAMAP_TILE_URL = "{{.TileURL}}";
     window.TESLAMAP_ATTRIBUTION = {{.Attribution}};

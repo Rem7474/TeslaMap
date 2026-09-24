@@ -45,6 +45,20 @@ func (l *SharedLink) IsAvailable() bool {
 	return l.IsActive && !l.IsPending() && !l.IsExpired()
 }
 
+func (l *SharedLink) IsDefinitelyClosed(graceHours int) bool {
+	if !l.IsExpired() {
+		return false
+	}
+	if graceHours <= 0 {
+		graceHours = 2
+	}
+	refTime := l.CreatedAt
+	if l.ExpiresAt != nil {
+		refTime = *l.ExpiresAt
+	}
+	return time.Now().UTC().After(refTime.Add(time.Duration(graceHours) * time.Hour))
+}
+
 type SafeZone struct {
 	ID           int64     `json:"id"`
 	Name         string    `json:"name"`
@@ -203,8 +217,51 @@ func (db *DB) IncrementLinkViewCount(token string) error {
 }
 
 func (db *DB) RevokeLink(id int64) error {
-	_, err := db.conn.Exec("UPDATE shared_links SET is_active = 0 WHERE id = ?", id)
+	now := time.Now().UTC()
+	_, err := db.conn.Exec("UPDATE shared_links SET is_active = 0, expires_at = COALESCE(expires_at, ?) WHERE id = ?", now, id)
 	return err
+}
+
+func (db *DB) HasActiveSharedLinks() (bool, error) {
+	now := time.Now().UTC()
+	var count int
+	err := db.conn.QueryRow(`
+		SELECT COUNT(*) FROM shared_links
+		WHERE is_active = 1
+		  AND (starts_at IS NULL OR starts_at <= ?)
+		  AND (expires_at IS NULL OR expires_at > ?)
+	`, now, now).Scan(&count)
+	return count > 0, err
+}
+
+func (db *DB) ListActiveExpireOnArrivalLinks() ([]SharedLink, error) {
+	query := `
+	SELECT id, token, label, created_at, starts_at, expires_at, expire_on_arrival, show_speed, show_battery, is_active, view_count, COALESCE(last_telemetry, '')
+	FROM shared_links
+	WHERE is_active = 1 AND expire_on_arrival = 1
+	`
+	rows, err := db.conn.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var links []SharedLink
+	for rows.Next() {
+		var l SharedLink
+		var startsAt, expiresAt sql.NullTime
+		if err := rows.Scan(&l.ID, &l.Token, &l.Label, &l.CreatedAt, &startsAt, &expiresAt, &l.ExpireOnArrival, &l.ShowSpeed, &l.ShowBattery, &l.IsActive, &l.ViewCount, &l.LastTelemetry); err != nil {
+			return nil, err
+		}
+		if startsAt.Valid {
+			l.StartsAt = &startsAt.Time
+		}
+		if expiresAt.Valid {
+			l.ExpiresAt = &expiresAt.Time
+		}
+		links = append(links, l)
+	}
+	return links, nil
 }
 
 func (db *DB) DeleteLink(id int64) error {

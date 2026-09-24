@@ -24,11 +24,23 @@ func (s *Server) handleShareView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	graceHours := s.cfg.PostExpirationGraceHours
+	if graceHours <= 0 {
+		graceHours = 2
+	}
+
 	isExpired := false
+	isDefinitelyClosed := false
 	isPending := false
 	startsAtFormatted := ""
 
-	if link == nil || link.IsExpired() {
+	if link == nil {
+		isExpired = true
+		isDefinitelyClosed = true
+	} else if link.IsDefinitelyClosed(graceHours) {
+		isExpired = true
+		isDefinitelyClosed = true
+	} else if link.IsExpired() {
 		isExpired = true
 	} else if link.IsPending() {
 		isPending = true
@@ -37,6 +49,7 @@ func (s *Server) handleShareView(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		_ = s.db.IncrementLinkViewCount(token)
+		s.stateManager.TriggerRouteCalculation()
 	}
 
 	title := "Tesla Live"
@@ -70,7 +83,7 @@ func (s *Server) handleShareView(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var initialTelemetry *state.PublicTelemetry
-	if link != nil {
+	if link != nil && !isDefinitelyClosed {
 		if link.IsExpired() && link.LastTelemetry != "" {
 			var t state.PublicTelemetry
 			if err := json.Unmarshal([]byte(link.LastTelemetry), &t); err == nil {
@@ -89,25 +102,27 @@ func (s *Server) handleShareView(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := struct {
-		Token            string
-		Title            string
-		IsExpired        bool
-		IsPending        bool
-		StartsAt         string
-		TileURL          string
-		Attribution      string
-		MaxZoom          int
-		InitialTelemetry *state.PublicTelemetry
+		Token              string
+		Title              string
+		IsExpired          bool
+		IsDefinitelyClosed bool
+		IsPending          bool
+		StartsAt           string
+		TileURL            string
+		Attribution        string
+		MaxZoom            int
+		InitialTelemetry   *state.PublicTelemetry
 	}{
-		Token:            token,
-		Title:            title,
-		IsExpired:        isExpired,
-		IsPending:        isPending,
-		StartsAt:         startsAtFormatted,
-		TileURL:          tileURL,
-		Attribution:      attribution,
-		MaxZoom:          maxZoom,
-		InitialTelemetry: initialTelemetry,
+		Token:              token,
+		Title:              title,
+		IsExpired:          isExpired,
+		IsDefinitelyClosed: isDefinitelyClosed,
+		IsPending:          isPending,
+		StartsAt:           startsAtFormatted,
+		TileURL:            tileURL,
+		Attribution:        attribution,
+		MaxZoom:            maxZoom,
+		InitialTelemetry:   initialTelemetry,
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

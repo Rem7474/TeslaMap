@@ -90,4 +90,31 @@ func TestSQLiteCRUD(t *testing.T) {
 	if len(zonesAfter) != 0 {
 		t.Errorf("expected 0 zones after delete, got %d", len(zonesAfter))
 	}
+
+	// 6. Test IsDefinitelyClosed
+	recentExp := now.Add(-30 * time.Minute)
+	recentExpiredLink, _ := db.CreateSharedLink("Recent Expired", nil, &recentExp, false, true, true)
+	if !recentExpiredLink.IsExpired() {
+		t.Errorf("expected link to be expired")
+	}
+	if recentExpiredLink.IsDefinitelyClosed(2) {
+		t.Errorf("expected link expired 30min ago NOT to be definitely closed yet (grace=2h)")
+	}
+
+	oldExp := now.Add(-3 * time.Hour)
+	oldExpiredLink, _ := db.CreateSharedLink("Old Expired", nil, &oldExp, false, true, true)
+	if !oldExpiredLink.IsDefinitelyClosed(2) {
+		t.Errorf("expected link expired 3h ago to be definitely closed (grace=2h)")
+	}
+
+	// 7. Test HasActiveSharedLinks
+	activeLink, _ := db.CreateSharedLink("Active Now", nil, nil, false, true, true)
+	hasActive, err := db.HasActiveSharedLinks()
+	if err != nil {
+		t.Fatalf("failed to check HasActiveSharedLinks: %v", err)
+	}
+	if !hasActive {
+		t.Errorf("expected at least one active link (activeLink)")
+	}
+	_ = activeLink
 }
