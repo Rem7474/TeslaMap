@@ -295,11 +295,60 @@ func TestTraveledPathTrackingAndFiltering(t *testing.T) {
 		t.Errorf("expected 0 traveled coordinates for future link, got %d", len(telemFuture.TraveledCoordinates))
 	}
 
-	// 3. New route clears previous trip's traveled coordinates
+	// 3. New route (e.g. next waypoint/Supercharger in multi-stop trip) preserves previous traveled coordinates
 	sm.UpdateActiveRoute("Versailles", 48.8049, 2.1204, 20, 15.0, 70)
 	telemNewRoute := sm.GetPublicTelemetry(linkAll)
-	if len(telemNewRoute.TraveledCoordinates) != 0 {
-		t.Errorf("expected 0 traveled coordinates after new route began, got %d", len(telemNewRoute.TraveledCoordinates))
+	if len(telemNewRoute.TraveledCoordinates) != 3 {
+		t.Errorf("expected 3 traveled coordinates to be preserved after new route began, got %d", len(telemNewRoute.TraveledCoordinates))
+	}
+
+	// 4. Link with expires_at in the past: points after expires_at are filtered
+	pastExpiry := time.Now().Add(-5 * time.Minute)
+	linkPast, _ := db.CreateSharedLink("Past Link", nil, &pastExpiry, false, true, true)
+	telemPast := sm.GetPublicTelemetry(linkPast)
+	if len(telemPast.TraveledCoordinates) != 0 {
+		t.Errorf("expected 0 traveled coordinates for past link, got %d", len(telemPast.TraveledCoordinates))
+	}
+}
+
+func TestAutoExpire_ChargingStopDoesNotExpire(t *testing.T) {
+	tmpDir := t.TempDir()
+	db, err := database.Open(filepath.Join(tmpDir, "test.db"))
+	if err != nil {
+		t.Fatalf("failed to open db: %v", err)
+	}
+	defer db.Close()
+
+	sm := NewStateManager(nil, db)
+
+	link, err := db.CreateSharedLink("Trip with Supercharger", nil, nil, true, true, true)
+	if err != nil {
+		t.Fatalf("failed to create link: %v", err)
+	}
+
+	// 1. Driving towards intermediate waypoint: Supercharger Avallon
+	scLat, scLon := 47.485, 3.905
+	sm.UpdateState("driving")
+	sm.UpdateLocation(scLat+0.0001, scLon, 90, 20) // arrived at Supercharger
+	sm.UpdateActiveRoute("Tesla Supercharger Avallon", scLat, scLon, 1, 0.1, 15)
+
+	// 2. Parks at Supercharger
+	sm.UpdateState("parked")
+
+	// 3. Verify link is STILL ACTIVE (not expired because it's a charging waypoint)
+	reloaded, err := db.GetSharedLinkByToken(link.Token)
+	if err != nil || reloaded == nil {
+		t.Fatalf("failed to fetch link: %v", err)
+	}
+	if !reloaded.IsActive {
+		t.Errorf("expected link to stay active when arriving at Supercharger waypoint")
+	}
+
+	// 4. Plugs in and starts charging
+	sm.UpdateState("charging")
+	reloaded, _ = db.GetSharedLinkByToken(link.Token)
+	if !reloaded.IsActive {
+		t.Errorf("expected link to stay active while charging")
 	}
 }
 

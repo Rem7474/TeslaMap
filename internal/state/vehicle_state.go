@@ -159,7 +159,7 @@ func (sm *StateManager) startParkGraceTimer() {
 		currentState := sm.state.State
 		sm.mu.RUnlock()
 
-		if currentState != "driving" {
+		if currentState != "driving" && currentState != "charging" {
 			log.Printf("[StateManager] Auto-expire: vehicle remained %s for %v without active GPS route. Expiring links.\n", currentState, duration)
 			sm.expireLinksNow()
 		}
@@ -266,6 +266,17 @@ func (sm *StateManager) GetRawState() VehicleState {
 	return st
 }
 
+func isChargingStop(destination string) bool {
+	d := strings.ToLower(destination)
+	return strings.Contains(d, "supercharg") ||
+		strings.Contains(d, "ionity") ||
+		strings.Contains(d, "fastned") ||
+		strings.Contains(d, "electra") ||
+		strings.Contains(d, "totalenergies") ||
+		strings.Contains(d, "recharge") ||
+		strings.Contains(d, "charger")
+}
+
 func (sm *StateManager) UpdateLocation(lat, lon, heading, speed float64) {
 	sm.mu.Lock()
 	sm.state.Latitude = lat
@@ -306,8 +317,13 @@ func (sm *StateManager) UpdateLocation(lat, lon, heading, speed float64) {
 					Longitude: lon,
 					Timestamp: time.Now(),
 				})
-				if len(sm.traveledPoints) > 5000 {
-					sm.traveledPoints = sm.traveledPoints[len(sm.traveledPoints)-5000:]
+				// Retain up to 24 hours of points, capped at 30,000 points
+				cutoff := time.Now().Add(-24 * time.Hour)
+				for len(sm.traveledPoints) > 0 && sm.traveledPoints[0].Timestamp.Before(cutoff) {
+					sm.traveledPoints = sm.traveledPoints[1:]
+				}
+				if len(sm.traveledPoints) > 30000 {
+					sm.traveledPoints = sm.traveledPoints[len(sm.traveledPoints)-30000:]
 				}
 			}
 		}
@@ -328,10 +344,10 @@ func (sm *StateManager) UpdateLocation(lat, lon, heading, speed float64) {
 		go sm.ensureRoutePolyline(lat, lon, destLat, destLon, distKm, mins)
 	}
 
-	// If car is already parked and route is active, check if current location reached destination
+	// If car is already parked and route is active, check if current location reached destination (ignore intermediate charging stops)
 	if currentState == "parked" && routeActive {
 		distMeters := geofence.HaversineDistance(lat, lon, destLat, destLon)
-		if distMeters <= 400 || (distKm > 0 && distKm <= 0.4) {
+		if (distMeters <= 400 || (distKm > 0 && distKm <= 0.4)) && !isChargingStop(sm.state.Route.Destination) {
 			sm.expireLinksNow()
 		}
 	}
@@ -375,8 +391,8 @@ func (sm *StateManager) UpdateState(vehicleState string) {
 	lastDest := sm.lastDestination
 	sm.mu.Unlock()
 
-	// If vehicle resumed driving, cancel any pending grace timer
-	if vehicleState == "driving" {
+	// If vehicle resumed driving or started charging, cancel any pending grace timer
+	if vehicleState == "driving" || vehicleState == "charging" {
 		sm.cancelParkGraceTimer()
 	}
 
@@ -386,8 +402,12 @@ func (sm *StateManager) UpdateState(vehicleState string) {
 			// Case 1: Active GPS navigation route exists
 			distMeters := geofence.HaversineDistance(carLat, carLon, destLat, destLon)
 			if distMeters <= 400 || (distKm > 0 && distKm <= 0.4) {
-				log.Printf("[StateManager] Auto-expire: arrived at GPS destination '%s' (dist: %.0fm, remaining: %.1fkm). Expiring links immediately.\n", destName, distMeters, distKm)
-				sm.expireLinksNow()
+				if isChargingStop(destName) {
+					log.Printf("[StateManager] Vehicle parked at charging waypoint '%s' (dist: %.0fm). Keeping links active.\n", destName, distMeters)
+				} else {
+					log.Printf("[StateManager] Auto-expire: arrived at GPS destination '%s' (dist: %.0fm, remaining: %.1fkm). Expiring links immediately.\n", destName, distMeters, distKm)
+					sm.expireLinksNow()
+				}
 			} else {
 				log.Printf("[StateManager] Vehicle parked mid-trip (%.1fkm / %.0fm away from '%s'). Keeping links active.\n", distKm, distMeters, destName)
 			}
@@ -395,8 +415,12 @@ func (sm *StateManager) UpdateState(vehicleState string) {
 			// Case 2: Route was cleared right before parking and car is at destination
 			distMeters := geofence.HaversineDistance(carLat, carLon, lastDest.Latitude, lastDest.Longitude)
 			if distMeters <= 400 {
-				log.Printf("[StateManager] Auto-expire: parked at recently completed destination '%s' (dist: %.0fm). Expiring links immediately.\n", lastDest.Destination, distMeters)
-				sm.expireLinksNow()
+				if isChargingStop(lastDest.Destination) {
+					log.Printf("[StateManager] Parked at recently completed charging waypoint '%s' (dist: %.0fm). Keeping links active.\n", lastDest.Destination, distMeters)
+				} else {
+					log.Printf("[StateManager] Auto-expire: parked at recently completed destination '%s' (dist: %.0fm). Expiring links immediately.\n", lastDest.Destination, distMeters)
+					sm.expireLinksNow()
+				}
 			} else {
 				log.Printf("[StateManager] Parked without active GPS route. Starting %v grace timer before expiring links.\n", sm.parkGraceDuration)
 				sm.startParkGraceTimer()
@@ -433,7 +457,7 @@ func (sm *StateManager) UpdateActiveRoute(destination string, lat, lon, minutes,
 		// If car is already parked and route was just cleared at destination, check for auto-expire
 		if curState == "parked" && lastDest != nil {
 			distMeters := geofence.HaversineDistance(carLat, carLon, lastDest.Latitude, lastDest.Longitude)
-			if distMeters <= 400 {
+			if distMeters <= 400 && !isChargingStop(lastDest.Destination) {
 				log.Printf("[StateManager] Auto-expire: route cleared while parked at destination '%s' (dist: %.0fm). Expiring links.\n", lastDest.Destination, distMeters)
 				sm.expireLinksNow()
 			}
@@ -455,7 +479,7 @@ func (sm *StateManager) UpdateActiveRoute(destination string, lat, lon, minutes,
 	var distanceJump bool
 
 	if isNewRoute {
-		sm.traveledPoints = nil
+		// Do NOT wipe sm.traveledPoints: traveled path remains continuous over the trip / multiple legs
 	} else if sm.state.Route != nil {
 		initialDist = sm.state.Route.InitialDistance
 		existingCoords = sm.state.Route.Coordinates
@@ -576,11 +600,14 @@ func (sm *StateManager) GetPublicTelemetry(link *database.SharedLink) PublicTele
 		UpdatedAt:      st.UpdatedAt.Format(time.RFC3339),
 	}
 
-	// Filter traveled points for this link (respecting StartsAt validity)
+	// Filter traveled points for this link (respecting StartsAt and ExpiresAt validity)
 	var filteredPts []TraveledPoint
 	var traveledCoords [][]float64
 	for _, pt := range traveledPts {
 		if link.StartsAt != nil && pt.Timestamp.Before(*link.StartsAt) {
+			continue
+		}
+		if link.ExpiresAt != nil && pt.Timestamp.After(*link.ExpiresAt) {
 			continue
 		}
 		filteredPts = append(filteredPts, pt)
