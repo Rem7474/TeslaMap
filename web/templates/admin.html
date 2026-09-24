@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TeslaMap Admin - Tableau de bord</title>
+  <link rel="stylesheet" href="/static/css/material3.css">
+  <link rel="stylesheet" href="/static/css/admin.css">
+</head>
+<body>
+
+  <!-- Top App Bar -->
+  <header class="admin-navbar">
+    <a href="/admin" class="brand-title">
+      <svg width="24" height="24" viewBox="0 0 48 48">
+        <rect x="15" y="12" width="18" height="28" rx="6" fill="#1e2229" stroke="#e82127" stroke-width="3"/>
+        <circle cx="17.5" cy="13.5" r="2" fill="#ffffff"/>
+        <circle cx="30.5" cy="13.5" r="2" fill="#ffffff"/>
+      </svg>
+      <span>TeslaMap</span>
+      <span class="brand-badge">ADMIN</span>
+    </a>
+
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <div class="m3-chip m3-chip-success">
+        <span class="pulse-dot"></span>
+        <span>MQTT Connecté</span>
+      </div>
+      <button class="m3-button m3-button-text" onclick="TeslaAdmin.logout()">
+        Déconnexion
+      </button>
+    </div>
+  </header>
+
+  <main class="admin-container">
+    
+    <!-- Vehicle Live Status Card -->
+    <section class="m3-card">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <h2 class="section-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="1" y="3" width="15" height="13"></rect>
+            <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+            <circle cx="5.5" cy="18.5" r="2.5"></circle>
+            <circle cx="18.5" cy="18.5" r="2.5"></circle>
+          </svg>
+          État du véhicule en direct
+        </h2>
+        <span id="stat-state" class="m3-chip">Connexion...</span>
+      </div>
+
+      <div class="telemetry-grid">
+        <div class="status-stat">
+          <span class="status-stat-label">Vitesse</span>
+          <span class="status-stat-val" id="stat-speed">-- km/h</span>
+        </div>
+        <div class="status-stat">
+          <span class="status-stat-label">Batterie</span>
+          <span class="status-stat-val" id="stat-battery">--%</span>
+        </div>
+        <div class="status-stat" style="grid-column: span 2;">
+          <span class="status-stat-label">Destination active</span>
+          <span class="status-stat-val" id="stat-dest" style="font-size: 16px; font-weight: 500;">Navigation libre</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Share Links Section -->
+    <section>
+      <div class="section-header">
+        <h2 class="section-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="18" cy="5" r="3"></circle>
+            <circle cx="6" cy="12" r="3"></circle>
+            <circle cx="18" cy="19" r="3"></circle>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+          </svg>
+          Liens de partage éphémères
+        </h2>
+        <button id="btn-open-create-modal" class="m3-button m3-button-tesla">
+          + Nouveau lien
+        </button>
+      </div>
+
+      <!-- Links container -->
+      <div id="links-container" class="links-list">
+        <!-- Rendered via JS -->
+      </div>
+    </section>
+
+    <!-- Safe Zones (Geofencing) Section -->
+    <section>
+      <div class="section-header">
+        <h2 class="section-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+          Zones protégées (Geofencing)
+        </h2>
+        <button class="m3-button m3-button-outlined" onclick="TeslaAdmin.createZone()">
+          + Ajouter une zone
+        </button>
+      </div>
+
+      <div class="m3-card">
+        <p style="font-size: 13px; color: var(--md-sys-color-on-surface-variant); margin-bottom: 16px;">
+          Lorsque votre véhicule se trouve dans l'une de ces zones, sa position exacte et sa vitesse sont masquées sur tous les liens partagés.
+        </p>
+        <div id="zones-container">
+          <!-- Rendered via JS -->
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Create Link Modal Dialog -->
+  <div class="m3-dialog-backdrop" id="new-link-modal">
+    <div class="m3-dialog">
+      <h3 class="m3-dialog-title">Créer un lien de partage</h3>
+      <p style="font-size: 13px; color: var(--md-sys-color-on-surface-variant); margin-bottom: 20px;">
+        Générez une URL temporaire sécurisée pour partager votre trajet en direct.
+      </p>
+
+      <div class="m3-field">
+        <label for="input-label">Nom ou libellé du lien</label>
+        <input type="text" id="input-label" class="m3-input" placeholder="Ex: Trajet vacances, Partage famille...">
+      </div>
+
+      <!-- Mode selection: Durée relative vs Créneau horaire -->
+      <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+        <button type="button" id="tab-mode-duration" class="m3-button m3-button-filled" style="flex: 1; height: 36px; font-size: 13px;">
+          ⏱ Durée relative
+        </button>
+        <button type="button" id="tab-mode-slot" class="m3-button m3-button-outlined" style="flex: 1; height: 36px; font-size: 13px;">
+          📅 Créneau horaire
+        </button>
+      </div>
+
+      <!-- Option 1: Preset Durations -->
+      <div id="section-duration" style="margin-bottom: 16px;">
+        <label style="display: block; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant); margin-bottom: 8px;">
+          Durée de validité (à partir de maintenant)
+        </label>
+        <div class="preset-grid">
+          <button type="button" class="preset-btn" data-mins="60">1 Heure</button>
+          <button type="button" class="preset-btn active" data-mins="240">4 Heures</button>
+          <button type="button" class="preset-btn" data-mins="720">12 Heures</button>
+          <button type="button" class="preset-btn" data-mins="1440">24 Heures</button>
+          <button type="button" class="preset-btn" data-mins="2880">48 Heures</button>
+          <button type="button" class="preset-btn" data-mins="0">Sans limite</button>
+        </div>
+      </div>
+
+      <!-- Option 2: Time Slot (Datetime pickers) -->
+      <div id="section-slot" style="display: none; margin-bottom: 16px;">
+        <div class="m3-field">
+          <label for="input-starts-at">Début du partage (ex: 14h00)</label>
+          <input type="datetime-local" id="input-starts-at" class="m3-input">
+        </div>
+        <div class="m3-field">
+          <label for="input-expires-at">Fin du partage (ex: 16h30)</label>
+          <input type="datetime-local" id="input-expires-at" class="m3-input">
+        </div>
+      </div>
+
+      <div class="m3-switch-container">
+        <div>
+          <div style="font-size: 14px; font-weight: 500;">Révoquer à l'arrivée</div>
+          <div style="font-size: 12px; color: var(--md-sys-color-on-surface-variant);">Expire dès que la voiture est stationnée</div>
+        </div>
+        <label class="m3-switch">
+          <input type="checkbox" id="input-expire-arrival" checked>
+          <span class="m3-switch-slider"></span>
+        </label>
+      </div>
+
+      <div class="m3-switch-container">
+        <div>
+          <div style="font-size: 14px; font-weight: 500;">Afficher la vitesse réelle</div>
+          <div style="font-size: 12px; color: var(--md-sys-color-on-surface-variant);">Visible en km/h sur la carte</div>
+        </div>
+        <label class="m3-switch">
+          <input type="checkbox" id="input-show-speed" checked>
+          <span class="m3-switch-slider"></span>
+        </label>
+      </div>
+
+      <div class="m3-switch-container">
+        <div>
+          <div style="font-size: 14px; font-weight: 500;">Afficher le niveau de batterie</div>
+          <div style="font-size: 12px; color: var(--md-sys-color-on-surface-variant);">Pourcentage restant</div>
+        </div>
+        <label class="m3-switch">
+          <input type="checkbox" id="input-show-battery" checked>
+          <span class="m3-switch-slider"></span>
+        </label>
+      </div>
+
+      <div class="m3-dialog-actions">
+        <button id="btn-cancel-create" class="m3-button m3-button-text">Annuler</button>
+        <button id="btn-submit-create" class="m3-button m3-button-tesla">Créer le lien</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="m3-toast" id="toast"></div>
+
+  <script src="/static/js/admin.js"></script>
+</body>
+</html>

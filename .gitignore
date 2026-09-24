@@ -1,0 +1,23 @@
+# Binaries and build artifacts
+bin/
+dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# SQLite database and local data
+data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# IDE and OS files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

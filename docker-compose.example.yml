@@ -1,0 +1,32 @@
+services:
+  teslamap:
+    image: teslamap:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - DATABASE_PATH=/data/teslamap.db
+      - MQTT_BROKER=tcp://mosquitto:1883
+      - TESLAMATE_CAR_ID=1
+      - ADMIN_PASSWORD=ChangeMeStrongPassword!
+      - ROUTING_PROVIDER=openrouteservice # ou mapbox, osrm
+      - ROUTING_API_KEY=votre_cle_api_openrouteservice
+      - SIMULATION_MODE=false # passer à true pour tester sans voiture
+    volumes:
+      - teslamap-data:/data
+    networks:
+      - default
+
+volumes:
+  teslamap-data:
+
+# Si vous l'intégrez dans un docker-compose séparé de TeslaMate,
+# connectez-vous au réseau existant de TeslaMate :
+# networks:
+#   default:
+#     external:
+#       name: teslamate_default

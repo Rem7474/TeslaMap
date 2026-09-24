@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connexion - TeslaMap Admin</title>
+  <link rel="stylesheet" href="/static/css/material3.css">
+  <style>
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .login-card {
+      width: 100%;
+      max-width: 400px;
+      padding: 32px 28px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="m3-card login-card">
+    <div style="text-align: center; margin-bottom: 24px;">
+      <svg width="48" height="48" viewBox="0 0 48 48">
+        <rect x="15" y="12" width="18" height="28" rx="6" fill="#1e2229" stroke="#e82127" stroke-width="3"/>
+        <circle cx="17.5" cy="13.5" r="2" fill="#ffffff"/>
+        <circle cx="30.5" cy="13.5" r="2" fill="#ffffff"/>
+      </svg>
+      <h1 style="font-size: 22px; font-weight: 700; margin-top: 12px; color: #ffffff;">TeslaMap Admin</h1>
+      <p style="font-size: 13px; color: var(--md-sys-color-on-surface-variant); margin-top: 4px;">
+        Veuillez saisir votre mot de passe administrateur
+      </p>
+    </div>
+
+    <form id="login-form">
+      <div class="m3-field">
+        <label for="password">Mot de passe</label>
+        <input type="password" id="password" class="m3-input" required autofocus placeholder="••••••••">
+      </div>
+
+      <div id="login-error" style="display: none; color: var(--md-sys-color-error); font-size: 13px; margin-bottom: 16px;">
+        Mot de passe incorrect.
+      </div>
+
+      <button type="submit" class="m3-button m3-button-tesla" style="width: 100%; height: 44px;">
+        Se connecter
+      </button>
+    </form>
+  </div>
+
+  <script>
+    document.getElementById('login-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const pwd = document.getElementById('password').value;
+      const errEl = document.getElementById('login-error');
+      errEl.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: pwd })
+        });
+        if (res.ok) {
+          window.location.href = '/admin';
+        } else {
+          errEl.style.display = 'block';
+        }
+      } catch (err) {
+        alert("Erreur de connexion au serveur");
+      }
+    });
+  </script>
+</body>
+</html>

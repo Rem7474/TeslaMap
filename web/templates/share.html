@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>{{.Title}} - Tesla Live</title>
+  
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  
+  <!-- TeslaMap Material 3 Styles -->
+  <link rel="stylesheet" href="/static/css/material3.css">
+  <link rel="stylesheet" href="/static/css/map.css">
+</head>
+<body>
+
+  <!-- Fullscreen Map -->
+  <div id="map"></div>
+
+  <!-- Re-center Action Button -->
+  <button id="recenter-btn" class="fab-recenter" title="Recentrer sur le véhicule">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="8"></circle>
+      <line x1="12" y1="2" x2="12" y2="6"></line>
+      <line x1="12" y1="18" x2="12" y2="22"></line>
+      <line x1="2" y1="12" x2="6" y2="12"></line>
+      <line x1="18" y1="12" x2="22" y2="12"></line>
+    </svg>
+  </button>
+
+  <!-- Floating Telemetry Sheet (M3 Responsive Bottom Sheet / Card) -->
+  <div class="telemetry-sheet" id="telemetry-sheet">
+    <div class="sheet-handle"></div>
+
+    <div class="telemetry-header">
+      <div>
+        <div style="font-size: 11px; text-transform: uppercase; color: var(--md-sys-color-on-surface-variant); font-weight: 600; letter-spacing: 0.5px;">Destination</div>
+        <div class="destination-title" id="dest-title">Chargement du trajet...</div>
+      </div>
+      <div id="status-chip" class="m3-chip">
+        <span class="pulse-dot"></span>
+        <span>Connexion...</span>
+      </div>
+    </div>
+
+    <!-- Safe Zone Alert -->
+    <div class="safe-zone-alert" id="safe-zone-alert" style="display: none;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
+      <div>
+        <strong>Zone Privée</strong> : position exacte masquée (<span id="safe-zone-name"></span>).
+      </div>
+    </div>
+
+    <!-- Metrics Row (ETA, Time left, Distance) -->
+    <div class="metric-row">
+      <div class="metric-box">
+        <div class="metric-value" id="eta-val">--:--</div>
+        <div class="metric-label">Arrivée</div>
+      </div>
+      <div class="metric-box">
+        <div class="metric-value" id="min-val">--</div>
+        <div class="metric-label">Restant</div>
+      </div>
+      <div class="metric-box">
+        <div class="metric-value" id="dist-val">--</div>
+        <div class="metric-label">Distance</div>
+      </div>
+      <div class="metric-box" id="battery-box" style="display: none;">
+        <div class="metric-value" id="battery-val">--%</div>
+        <div class="metric-label">Batterie</div>
+      </div>
+    </div>
+
+    <!-- Progress bar M3 -->
+    <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--md-sys-color-on-surface-variant); margin-bottom: 6px;">
+      <span>Progression du trajet</span>
+      <span id="progress-pct" style="font-weight: 600; color: #ffffff;">0%</span>
+    </div>
+    <div class="m3-progress-container">
+      <div class="m3-progress-bar" id="progress-bar"></div>
+    </div>
+  </div>
+
+  <!-- Pending / Scheduled Link Overlay -->
+  <div class="m3-card expired-card" id="pending-card" style="display: {{if .IsPending}}block{{else}}none{{end}};">
+    <svg class="expired-icon" style="color: var(--md-sys-color-primary);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+      <line x1="16" y1="2" x2="16" y2="6"></line>
+      <line x1="8" y1="2" x2="8" y2="6"></line>
+      <line x1="3" y1="10" x2="21" y2="10"></line>
+    </svg>
+    <h2 style="font-size: 22px; font-weight: 700; margin-bottom: 12px; color: #ffffff;">Créneau programmé</h2>
+    <p style="color: var(--md-sys-color-on-surface-variant); font-size: 14px; line-height: 1.6;">
+      Ce lien de partage s'activera au début du créneau prévu :<br>
+      <strong id="pending-starts-at" style="color: #ffffff; font-size: 15px; display: inline-block; margin-top: 8px;">{{.StartsAt}}</strong>
+    </p>
+  </div>
+
+  <!-- Expired Link Overlay (Hidden by default) -->
+  <div class="m3-card expired-card" id="expired-card" style="display: {{if .IsExpired}}block{{else}}none{{end}};">
+    <svg class="expired-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="10"></circle>
+      <polyline points="12 6 12 12 16 14"></polyline>
+    </svg>
+    <h2 style="font-size: 22px; font-weight: 700; margin-bottom: 12px; color: #ffffff;">Lien expiré</h2>
+    <p style="color: var(--md-sys-color-on-surface-variant); font-size: 14px; line-height: 1.6;">
+      Ce lien de partage temporaire n'est plus actif. Le trajet est soit terminé, soit le temps de partage autorisé s'est écoulé.
+    </p>
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  
+  <script>
+    window.TESLAMAP_TOKEN = "{{.Token}}";
+  </script>
+  <script src="/static/js/live_map.js"></script>
+</body>
+</html>

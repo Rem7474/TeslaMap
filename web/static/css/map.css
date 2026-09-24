@@ -1,0 +1,212 @@
+/* Live Map Styling */
+#map {
+  width: 100vw;
+  height: 100vh;
+  background-color: #0b0d11;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+}
+
+/* Leaflet dark theme customizations */
+.leaflet-container {
+  background-color: #0b0d11 !important;
+}
+
+.leaflet-control-zoom {
+  border: none !important;
+  box-shadow: var(--md-sys-elevation-2) !important;
+  margin-bottom: 90px !important;
+  margin-right: 16px !important;
+}
+
+.leaflet-control-zoom a {
+  background-color: var(--md-sys-color-surface-container-high) !important;
+  color: var(--md-sys-color-on-surface) !important;
+  border: 1px solid var(--md-sys-color-outline-variant) !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background-color: var(--md-sys-color-surface-variant) !important;
+}
+
+.leaflet-control-attribution {
+  background: rgba(15, 17, 21, 0.75) !important;
+  color: #717684 !important;
+  backdrop-filter: blur(4px);
+  border-radius: var(--md-shape-xs) 0 0 0;
+  font-size: 10px !important;
+}
+
+.leaflet-control-attribution a {
+  color: #9aa0a6 !important;
+}
+
+/* Car Marker */
+.car-marker-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.car-marker-icon {
+  width: 48px;
+  height: 48px;
+  transform-origin: center center;
+  transition: transform 0.6s cubic-bezier(0.2, 0, 0, 1);
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,0.7));
+}
+
+/* Floating Telemetry Sheet (Responsive Bottom-Sheet on mobile, Floating Card on Desktop) */
+.telemetry-sheet {
+  position: absolute;
+  z-index: 1000;
+  background: rgba(22, 25, 31, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: var(--md-sys-elevation-3);
+  transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Desktop: Top-Left Card */
+@media (min-width: 641px) {
+  .telemetry-sheet {
+    top: 20px;
+    left: 20px;
+    width: 380px;
+    border-radius: var(--md-shape-xl);
+    padding: 22px;
+  }
+  .sheet-handle {
+    display: none;
+  }
+}
+
+/* Mobile: Bottom Sheet */
+@media (max-width: 640px) {
+  .telemetry-sheet {
+    bottom: 0;
+    left: 0;
+    right: 0;
+    border-radius: var(--md-shape-xl) var(--md-shape-xl) 0 0;
+    padding: 12px 20px 24px 20px;
+  }
+  .sheet-handle {
+    width: 36px;
+    height: 4px;
+    background-color: var(--md-sys-color-outline);
+    border-radius: var(--md-shape-full);
+    margin: 0 auto 12px auto;
+  }
+}
+
+/* Telemetry Header */
+.telemetry-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.destination-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--md-sys-color-on-surface);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 240px;
+}
+
+/* Metric Display */
+.metric-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 16px 0;
+  text-align: center;
+}
+
+.metric-box {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--md-shape-md);
+  padding: 10px 8px;
+}
+
+.metric-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.3px;
+}
+
+.metric-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--md-sys-color-on-surface-variant);
+  margin-top: 2px;
+  letter-spacing: 0.5px;
+}
+
+/* Recenter Button */
+.fab-recenter {
+  position: absolute;
+  right: 16px;
+  bottom: 160px;
+  z-index: 1000;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-primary);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  box-shadow: var(--md-sys-elevation-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+@media (min-width: 641px) {
+  .fab-recenter {
+    bottom: 24px;
+  }
+}
+
+.fab-recenter:hover {
+  background: var(--md-sys-color-surface-variant);
+  transform: scale(1.05);
+}
+
+/* Expired View Overlay */
+.expired-card {
+  text-align: center;
+  max-width: 420px;
+  margin: 80px auto;
+  padding: 36px 24px;
+}
+
+.expired-icon {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 20px;
+  color: var(--md-sys-color-error);
+}
+
+/* Safe Zone Indicator Card */
+.safe-zone-alert {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: var(--md-shape-md);
+  padding: 12px 16px;
+  margin: 12px 0;
+  font-size: 13px;
+  color: #93c5fd;
+}
