@@ -56,6 +56,15 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /share/{token}", s.handleShareView)
 	s.mux.HandleFunc("GET /api/stream/{token}", s.handleSSEStream)
 
+	// Clean up any stale Service Workers registered on this host/port by previous apps
+	handleSWCleanup := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/javascript")
+		w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
+		_, _ = w.Write([]byte(`self.addEventListener('install',()=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(self.registration.unregister().then(()=>self.clients.matchAll()).then(clients=>{clients.forEach(c=>{if(c.url&&'navigate'in c)c.navigate(c.url);});}));});`))
+	}
+	s.mux.HandleFunc("GET /sw.js", handleSWCleanup)
+	s.mux.HandleFunc("GET /service-worker.js", handleSWCleanup)
+
 	// Admin and Auth routes
 	s.mux.HandleFunc("GET /login", s.handleLoginPage)
 	s.mux.HandleFunc("POST /api/auth/login", s.handleLoginAPI)

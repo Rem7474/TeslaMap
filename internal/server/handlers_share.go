@@ -101,19 +101,7 @@ func (s *Server) handleShareView(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	data := struct {
-		Token              string
-		Title              string
-		IsExpired          bool
-		IsDefinitelyClosed bool
-		IsPending          bool
-		IsEmbed            bool
-		StartsAt           string
-		TileURL            string
-		Attribution        string
-		MaxZoom            int
-		InitialTelemetry   *state.PublicTelemetry
-	}{
+	s.renderShareView(w, MapViewData{
 		Token:              token,
 		Title:              title,
 		IsExpired:          isExpired,
@@ -125,8 +113,24 @@ func (s *Server) handleShareView(w http.ResponseWriter, r *http.Request) {
 		Attribution:        attribution,
 		MaxZoom:            maxZoom,
 		InitialTelemetry:   initialTelemetry,
-	}
+	})
+}
 
+type MapViewData struct {
+	Token              string
+	Title              string
+	IsExpired          bool
+	IsDefinitelyClosed bool
+	IsPending          bool
+	IsEmbed            bool
+	StartsAt           string
+	TileURL            string
+	Attribution        string
+	MaxZoom            int
+	InitialTelemetry   *state.PublicTelemetry
+}
+
+func (s *Server) renderShareView(w http.ResponseWriter, data MapViewData) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := s.templates.ExecuteTemplate(w, "share.html", data); err != nil {
 		log.Printf("[Server] Template execution error: %v", err)

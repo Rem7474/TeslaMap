@@ -11,6 +11,13 @@
   <!-- TeslaMap Material 3 Styles -->
   <link rel="stylesheet" href="/static/css/material3.css">
   <link rel="stylesheet" href="/static/css/map.css">
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(regs) {
+        for (var r of regs) { r.unregister(); }
+      });
+    }
+  </script>
 </head>
 <body class="{{if .IsEmbed}}embed-mode{{end}}">
 

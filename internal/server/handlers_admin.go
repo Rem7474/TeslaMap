@@ -3,7 +3,6 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"log"
 	"net/http"
 	"strconv"
@@ -95,32 +94,24 @@ func (s *Server) handleAdminMapPage(w http.ResponseWriter, r *http.Request) {
 
 	isEmbed := r.URL.Query().Get("embed") == "1"
 
-	data := struct {
-		Title               string
-		Token               string
-		IsExpired           bool
-		IsDefinitelyClosed  bool
-		IsPending           bool
-		IsEmbed             bool
-		TileURL             string
-		Attribution         template.HTML
-		MaxZoom             int
-		InitialTelemetry    template.JS
-	}{
-		Title:              "Tesla Live Map",
+	data := MapViewData{
 		Token:              "admin",
+		Title:              "Tesla Live Map",
 		IsExpired:          false,
 		IsDefinitelyClosed: false,
 		IsPending:          false,
 		IsEmbed:            isEmbed,
+		StartsAt:           "",
 		TileURL:            tileURL,
-		Attribution:        template.HTML(attribution),
+		Attribution:        attribution,
 		MaxZoom:            maxZoom,
-		InitialTelemetry:   template.JS("null"),
+		InitialTelemetry:   nil,
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	_ = s.templates.ExecuteTemplate(w, "share.html", data)
+	if err := s.templates.ExecuteTemplate(w, "share.html", data); err != nil {
+		log.Printf("[Server] Template execution error for admin map: %v", err)
+	}
 }
 
 func (s *Server) handleAdminStatusAPI(w http.ResponseWriter, r *http.Request) {

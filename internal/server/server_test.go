@@ -86,6 +86,30 @@ func TestAuthAndAdminFlow(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Errorf("expected 200 for authenticated admin access, got %d", w.Code)
 	}
+
+	// 5. Authorized access to /admin/map?embed=1
+	req = httptest.NewRequest("GET", "/admin/map?embed=1", nil)
+	req.Header.Set("Cookie", cookie)
+	w = httptest.NewRecorder()
+	srv.mux.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200 for authenticated admin map, got %d", w.Code)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, "</html>") || !strings.Contains(body, "live_map.js") {
+		t.Errorf("admin map HTML was truncated or incomplete")
+	}
+
+	// 6. Test Service Worker kill-switch cleanup route
+	req = httptest.NewRequest("GET", "/sw.js", nil)
+	w = httptest.NewRecorder()
+	srv.mux.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200 for /sw.js, got %d", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), "unregister") {
+		t.Errorf("expected unregister script in /sw.js, got %s", w.Body.String())
+	}
 }
 
 func TestShareViewAndSSE(t *testing.T) {
