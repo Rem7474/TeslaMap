@@ -9,6 +9,23 @@
   let adminRouteLine = null;
   let adminZoneLayers = [];
   let adminCurrentLatLng = null;
+  let adminAutoFollow = true;
+
+  function updateAdminRecenterBtn() {
+    const btn = document.getElementById('btn-admin-recenter');
+    if (!btn) return;
+    if (adminAutoFollow) {
+      btn.classList.remove('active');
+      btn.style.opacity = '0.5';
+      btn.style.background = 'rgba(18, 20, 26, 0.88)';
+      btn.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+    } else {
+      btn.classList.add('active');
+      btn.style.opacity = '1';
+      btn.style.background = '#e82127';
+      btn.style.borderColor = '#e82127';
+    }
+  }
 
   // New Link Modal DOM
   const elModal = document.getElementById('new-link-modal');
@@ -205,6 +222,12 @@
       lineJoin: 'round',
     });
 
+    adminMap.on('dragstart', () => {
+      adminAutoFollow = false;
+      updateAdminRecenterBtn();
+    });
+    updateAdminRecenterBtn();
+
     if (lastStatus) {
       updateAdminMap(lastStatus);
     }
@@ -228,8 +251,8 @@
         adminMap.setView(adminCurrentLatLng, 15, { animate: false });
       } else {
         adminCarMarker.setLatLng(adminCurrentLatLng);
-        if (isFirst) {
-          adminMap.setView(adminCurrentLatLng, 15, { animate: false });
+        if (adminAutoFollow || isFirst) {
+          adminMap.panTo(adminCurrentLatLng, { animate: true });
         }
       }
 
@@ -629,6 +652,8 @@
   // Public admin namespace
   window.TeslaAdmin = {
     recenterAdminMap: function () {
+      adminAutoFollow = true;
+      updateAdminRecenterBtn();
       if (adminMap && adminCurrentLatLng) {
         adminMap.setView(adminCurrentLatLng, Math.max(adminMap.getZoom(), 15), { animate: true });
       }
