@@ -24,6 +24,79 @@
   let animTargetHeading = 0;
   let lastServerUpdateTime = 0;
   let lastTraveledCoords = [];
+  let fullRouteCoords = [];
+  let lastRouteIdx = 0;
+
+  function getRemainingRoute(carPos, fullRoute) {
+    if (!fullRoute || fullRoute.length < 2) return fullRoute || [];
+    if (!carPos) return fullRoute;
+
+    const carLat = carPos[0];
+    const carLon = carPos[1];
+
+    let minD2 = Infinity;
+    let bestIdx = lastRouteIdx;
+    let bestT = 0;
+
+    const searchStart = Math.max(0, lastRouteIdx - 2);
+    for (let i = searchStart; i < fullRoute.length - 1; i++) {
+      const a = fullRoute[i];
+      const b = fullRoute[i + 1];
+      const dy = b[0] - a[0];
+      const dx = b[1] - a[1];
+      const l2 = dx * dx + dy * dy;
+
+      let t = 0;
+      if (l2 > 0) {
+        t = ((carLon - a[1]) * dx + (carLat - a[0]) * dy) / l2;
+        t = Math.max(0, Math.min(1, t));
+      }
+      const projLat = a[0] + t * dy;
+      const projLon = a[1] + t * dx;
+      const d2 = (carLat - projLat) * (carLat - projLat) + (carLon - projLon) * (carLon - projLon);
+
+      if (d2 < minD2) {
+        minD2 = d2;
+        bestIdx = i;
+        bestT = t;
+      }
+    }
+
+    // If car deviates or resets, scan whole route if min distance is too large (> ~1km)
+    if (minD2 > 0.0001) {
+      for (let i = 0; i < searchStart; i++) {
+        const a = fullRoute[i];
+        const b = fullRoute[i + 1];
+        const dy = b[0] - a[0];
+        const dx = b[1] - a[1];
+        const l2 = dx * dx + dy * dy;
+
+        let t = 0;
+        if (l2 > 0) {
+          t = ((carLon - a[1]) * dx + (carLat - a[0]) * dy) / l2;
+          t = Math.max(0, Math.min(1, t));
+        }
+        const projLat = a[0] + t * dy;
+        const projLon = a[1] + t * dx;
+        const d2 = (carLat - projLat) * (carLat - projLat) + (carLon - projLon) * (carLon - projLon);
+
+        if (d2 < minD2) {
+          minD2 = d2;
+          bestIdx = i;
+          bestT = t;
+        }
+      }
+    }
+
+    lastRouteIdx = bestIdx;
+
+    const remaining = [carPos];
+    const startOffset = (bestT <= 0.001) ? bestIdx : bestIdx + 1;
+    for (let i = startOffset; i < fullRoute.length; i++) {
+      remaining.push(fullRoute[i]);
+    }
+    return remaining;
+  }
 
   // DOM Elements
   const elStatusChip = document.getElementById('status-chip');
@@ -81,6 +154,9 @@
       setTimeout(function () {
         isProgrammaticMove = false;
       }, 150);
+      if (routeLine && fullRouteCoords && fullRouteCoords.length > 1) {
+        routeLine.setLatLngs(getRemainingRoute(currentLatLng, fullRouteCoords));
+      }
       return;
     }
 
@@ -106,6 +182,12 @@
       animTargetHeading = targetH;
       carMarker.setLatLng(currentLatLng);
       if (carIconElement) carIconElement.style.transform = `rotate(${targetH}deg)`;
+      if (traveledLine && lastTraveledCoords && lastTraveledCoords.length > 0) {
+        traveledLine.setLatLngs(lastTraveledCoords.concat([currentLatLng]));
+      }
+      if (routeLine && fullRouteCoords && fullRouteCoords.length > 1) {
+        routeLine.setLatLngs(getRemainingRoute(currentLatLng, fullRouteCoords));
+      }
       if (autoFollow && map) {
         isProgrammaticMove = true;
         map.setView(currentLatLng, map.getZoom(), { animate: false });
@@ -158,6 +240,11 @@
       // Smoothly update the end of the gray traveled line to the car's current animated point
       if (traveledLine && lastTraveledCoords && lastTraveledCoords.length > 0) {
         traveledLine.setLatLngs(lastTraveledCoords.concat([currentLatLng]));
+      }
+
+      // Smoothly update the upcoming blue route line so it shrinks seamlessly from the car's position at 60fps
+      if (routeLine && fullRouteCoords && fullRouteCoords.length > 1) {
+        routeLine.setLatLngs(getRemainingRoute(currentLatLng, fullRouteCoords));
       }
 
       if (progress < 1.0) {
@@ -288,6 +375,8 @@
       if (routeLine && map.hasLayer(routeLine)) {
         map.removeLayer(routeLine);
       }
+      fullRouteCoords = [];
+      lastRouteIdx = 0;
       if (elRecenterBar) elRecenterBar.classList.remove('visible');
       updateStatusChip(I18n.t('private_zone'), 'm3-chip-warning');
     } else {
@@ -352,10 +441,21 @@
       if (elProgressPct) elProgressPct.textContent = pct + '%';
       if (elProgressBar) elProgressBar.style.width = pct + '%';
 
-      // Draw Route Polyline
+      // Draw Route Polyline with 60fps slicing
       if (data.route_coordinates && data.route_coordinates.length > 1) {
+        const isNew = fullRouteCoords.length !== data.route_coordinates.length ||
+          (fullRouteCoords.length > 0 && (
+            fullRouteCoords[0][0] !== data.route_coordinates[0][0] ||
+            fullRouteCoords[fullRouteCoords.length - 1][0] !== data.route_coordinates[data.route_coordinates.length - 1][0]
+          ));
+        if (isNew) {
+          fullRouteCoords = data.route_coordinates;
+          lastRouteIdx = 0;
+        }
+
+        const remaining = getRemainingRoute(currentLatLng || fullRouteCoords[0], fullRouteCoords);
         if (!routeLine) {
-          routeLine = L.polyline(data.route_coordinates, {
+          routeLine = L.polyline(remaining, {
             color: '#3b82f6',
             weight: 5,
             opacity: 0.8,
@@ -363,7 +463,10 @@
             lineCap: 'round'
           }).addTo(map);
         } else {
-          routeLine.setLatLngs(data.route_coordinates);
+          if (!map.hasLayer(routeLine)) {
+            routeLine.addTo(map);
+          }
+          routeLine.setLatLngs(remaining);
         }
 
         // Destination Marker
@@ -390,6 +493,8 @@
         map.removeLayer(routeLine);
         routeLine = null;
       }
+      fullRouteCoords = [];
+      lastRouteIdx = 0;
       if (destMarker && map) {
         map.removeLayer(destMarker);
         destMarker = null;
@@ -416,6 +521,8 @@
     if (traveledLine && map && map.hasLayer(traveledLine)) map.removeLayer(traveledLine);
     if (routeLine && map && map.hasLayer(routeLine)) map.removeLayer(routeLine);
     if (destMarker && map && map.hasLayer(destMarker)) map.removeLayer(destMarker);
+    fullRouteCoords = [];
+    lastRouteIdx = 0;
   }
 
   function updateLangIndicator() {

@@ -197,11 +197,13 @@ func (sm *StateManager) UpdateLocation(lat, lon, heading, speed float64) {
 	sm.state.UpdatedAt = time.Now()
 	routeActive := sm.state.HasActiveRoute && sm.state.Route != nil
 	var destLat, destLon, distKm, mins float64
+	var hasRouteCoords bool
 	if routeActive {
 		destLat = sm.state.Route.Latitude
 		destLon = sm.state.Route.Longitude
 		distKm = sm.state.Route.DistanceToArrival
 		mins = sm.state.Route.MinutesToArrival
+		hasRouteCoords = len(sm.state.Route.Coordinates) > 0
 	}
 	currentState := sm.state.State
 
@@ -230,8 +232,8 @@ func (sm *StateManager) UpdateLocation(lat, lon, heading, speed float64) {
 	}
 	sm.mu.Unlock()
 
-	// If route is active, calculate or update routing polyline in background if needed
-	if routeActive && sm.router != nil {
+	// If route is active, calculate routing polyline in background if missing
+	if routeActive && sm.router != nil && !hasRouteCoords {
 		go sm.ensureRoutePolyline(lat, lon, destLat, destLon, distKm, mins)
 	}
 
@@ -388,7 +390,7 @@ func (sm *StateManager) UpdateActiveRoute(destination string, lat, lon, minutes,
 	carLon := sm.state.Longitude
 	sm.mu.Unlock()
 
-	if sm.router != nil && (carLat != 0 || carLon != 0) {
+	if sm.router != nil && (carLat != 0 || carLon != 0) && (isNewRoute || len(existingCoords) == 0) {
 		go sm.ensureRoutePolyline(carLat, carLon, lat, lon, distance, minutes)
 	}
 
