@@ -93,21 +93,30 @@ type StateManager struct {
 	parkGraceTimer    *time.Timer
 	parkGraceTimerMu  sync.Mutex
 	parkGraceDuration time.Duration
-	traveledPoints    []TraveledPoint
-	lastRouteCalc     time.Time
+	traveledPoints      []TraveledPoint
+	lastRouteCalc       time.Time
+	routeRecalcInterval time.Duration
 }
 
 func NewStateManager(r routing.Router, db *database.DB) *StateManager {
 	return &StateManager{
-		router:            r,
-		db:                db,
-		subscribers:       make(map[chan struct{}]struct{}),
-		parkGraceDuration: 5 * time.Minute,
+		router:              r,
+		db:                  db,
+		subscribers:         make(map[chan struct{}]struct{}),
+		parkGraceDuration:   5 * time.Minute,
+		routeRecalcInterval: 3 * time.Minute,
 		state: VehicleState{
 			State:     "parked",
 			UpdatedAt: time.Now(),
 		},
 	}
+}
+
+// SetRouteRecalcInterval configures minimum interval between route recalculations
+func (sm *StateManager) SetRouteRecalcInterval(d time.Duration) {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+	sm.routeRecalcInterval = d
 }
 
 // SetParkGraceDuration configures the grace period before expiring links in free navigation mode
@@ -200,7 +209,11 @@ func (sm *StateManager) TriggerRouteCalculation() {
 		if len(coords) == 0 {
 			needsCalc = true
 		} else if carLat != 0 && carLon != 0 {
-			needsCalc = !isPointNearPolyline(carLat, carLon, coords, 350.0)
+			interval := sm.routeRecalcInterval
+			if interval <= 0 {
+				interval = 3 * time.Minute
+			}
+			needsCalc = !isPointNearPolyline(carLat, carLon, coords, 350.0) && time.Since(sm.lastRouteCalc) >= interval
 		}
 	}
 	sm.mu.RUnlock()
@@ -292,11 +305,16 @@ func (sm *StateManager) UpdateLocation(lat, lon, heading, speed float64) {
 	}
 	sm.mu.Unlock()
 
+	interval := sm.routeRecalcInterval
+	if interval <= 0 {
+		interval = 3 * time.Minute
+	}
+
 	// If route is active, calculate routing polyline if missing or if off-route (> 250m while driving)
-	shouldReroute := !hasRouteCoords || (isOffRoute && time.Since(sm.lastRouteCalc) >= 20*time.Second)
-	if routeActive && sm.router != nil && shouldReroute && sm.HasActiveInterest() {
+	shouldReroute := !hasRouteCoords || (isOffRoute && time.Since(sm.lastRouteCalc) >= interval)
+	if routeActive && sm.router != nil && shouldReroute && sm.HasActiveViewers() {
 		if isOffRoute {
-			log.Println("[StateManager] Vehicle deviated from planned route (> 250m, autoroute/nationale switch). Recalculating route...")
+			log.Printf("[StateManager] Vehicle deviated from planned route (> 250m, autoroute/nationale switch, >= %v since last calc). Recalculating route...\n", interval)
 		}
 		go sm.ensureRoutePolyline(lat, lon, destLat, destLon, distKm, mins)
 	}
@@ -461,10 +479,14 @@ func (sm *StateManager) UpdateActiveRoute(destination string, lat, lon, minutes,
 	carLon := sm.state.Longitude
 	sm.mu.Unlock()
 
-	shouldCalc := isNewRoute || len(existingCoords) == 0 || (distanceJump && time.Since(sm.lastRouteCalc) >= 20*time.Second)
-	if sm.router != nil && (carLat != 0 || carLon != 0) && shouldCalc && sm.HasActiveInterest() {
+	interval := sm.routeRecalcInterval
+	if interval <= 0 {
+		interval = 3 * time.Minute
+	}
+	shouldCalc := isNewRoute || len(existingCoords) == 0 || (distanceJump && time.Since(sm.lastRouteCalc) >= interval)
+	if sm.router != nil && (carLat != 0 || carLon != 0) && shouldCalc && sm.HasActiveViewers() {
 		if distanceJump {
-			log.Printf("[StateManager] Tesla reported significant distance change (rerouted by Tesla). Recalculating route polyline...\n")
+			log.Printf("[StateManager] Tesla reported significant distance change (rerouted by Tesla, >= %v since last calc). Recalculating route polyline...\n", interval)
 		}
 		go sm.ensureRoutePolyline(carLat, carLon, lat, lon, distance, minutes)
 	}

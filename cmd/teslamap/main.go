@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"teslamap/internal/config"
 	"teslamap/internal/database"
@@ -59,6 +60,9 @@ func main() {
 
 	// 3. Initialize State Manager
 	stateManager := state.NewStateManager(router, db)
+	if cfg.RoutingRecalcIntervalMinutes > 0 {
+		stateManager.SetRouteRecalcInterval(time.Duration(cfg.RoutingRecalcIntervalMinutes) * time.Minute)
+	}
 
 	// 4. Ingestion: Simulator OR MQTT Subscriber
 	var mqttSub *mqtt.Subscriber
