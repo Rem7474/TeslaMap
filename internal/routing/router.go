@@ -209,7 +209,7 @@ func (s *RoutingService) routeOSRM(ctx context.Context, startLat, startLon, endL
 
 // OpenRouteService API with alternative routes
 func (s *RoutingService) routeOpenRouteService(ctx context.Context, startLat, startLon, endLat, endLon, targetDistanceKm, targetMinutes float64) (*RouteResult, error) {
-	url := "https://api.openrouteservice.org/v2/directions/driving-car/geojson"
+	url := "https://api.heigit.org/openrouteservice/v2/directions/driving-car/geojson"
 
 	bodyData := map[string]interface{}{
 		"coordinates": [][]float64{
