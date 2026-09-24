@@ -1,4 +1,3 @@
-/* Admin Dashboard Styling */
 .admin-navbar {
   height: 64px;
   background-color: var(--md-sys-color-surface-container);
@@ -10,6 +9,8 @@
   position: sticky;
   top: 0;
   z-index: 100;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .brand-title {
@@ -20,6 +21,7 @@
   font-weight: 700;
   color: var(--md-sys-color-on-surface);
   text-decoration: none;
+  flex-shrink: 0;
 }
 
 .brand-badge {
@@ -31,8 +33,26 @@
   border-radius: var(--md-shape-full);
 }
 
+.navbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.lang-selector {
+  display: flex;
+  gap: 4px;
+  background: var(--md-sys-color-surface-container-high);
+  padding: 2px;
+  border-radius: var(--md-shape-sm);
+  border: 1px solid var(--md-sys-color-outline-variant);
+}
+
 .admin-container {
   max-width: 960px;
+  width: 100%;
+  box-sizing: border-box;
   margin: 32px auto;
   padding: 0 16px 80px 16px;
   display: flex;
@@ -44,6 +64,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   margin-bottom: 16px;
 }
 
@@ -95,6 +116,8 @@
   font-size: 20px;
   font-weight: 700;
   color: #ffffff;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .admin-map-wrapper {
@@ -170,6 +193,9 @@
   border-radius: var(--md-shape-lg);
   box-shadow: var(--md-sys-elevation-1);
   transition: all 0.2s ease;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .link-card:hover {
@@ -185,7 +211,8 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  min-width: 260px;
+  min-width: 0;
+  flex: 1 1 240px;
 }
 
 .link-card-title {
@@ -195,6 +222,10 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
+  min-width: 0;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .link-card-meta {
@@ -217,6 +248,7 @@
   align-items: center;
   gap: 10px;
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
 
 /* Preset buttons for TTL dialog */
@@ -261,4 +293,124 @@
   border-radius: var(--md-shape-md);
   margin-bottom: 8px;
   box-sizing: border-box;
+}
+
+/* Mobile Responsive Optimization (< 600px) */
+@media (max-width: 600px) {
+  .admin-navbar {
+    height: 56px;
+    padding: 0 12px;
+  }
+
+  .brand-title {
+    font-size: 16px;
+    gap: 8px;
+  }
+
+  .brand-badge {
+    display: none;
+  }
+
+  .navbar-actions {
+    gap: 6px;
+  }
+
+  .navbar-chip {
+    padding: 0 8px;
+    height: 28px;
+  }
+
+  .navbar-chip-text {
+    display: none;
+  }
+
+  .navbar-logout-btn {
+    padding: 0 8px;
+    font-size: 13px;
+  }
+
+  .admin-container {
+    margin: 16px auto;
+    padding: 0 12px 60px 12px;
+    gap: 20px;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .section-header .m3-button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .section-title {
+    font-size: 16px;
+  }
+
+  .telemetry-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .link-card {
+    padding: 14px;
+    gap: 14px;
+  }
+
+  .link-card-main {
+    width: 100%;
+    flex: 1 1 100%;
+  }
+
+  .link-card-actions {
+    width: 100%;
+    flex: 1 1 100%;
+    gap: 8px;
+  }
+
+  .link-card-actions .m3-button {
+    flex: 1 1 calc(50% - 8px);
+    justify-content: center;
+    padding: 0 12px;
+    font-size: 13px;
+  }
+
+  .link-card-meta {
+    gap: 8px 12px;
+    font-size: 12px;
+  }
+
+  .zone-chip {
+    padding: 10px 14px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .preset-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+
+  .preset-btn {
+    font-size: 11px;
+    height: 36px;
+    padding: 0 2px;
+  }
+
+  .m3-dialog {
+    padding: 20px 14px;
+    margin: 0 8px;
+  }
+
+  .m3-switch-container {
+    gap: 8px;
+  }
+
+  .m3-switch-container > div {
+    flex: 1;
+    min-width: 0;
+  }
 }

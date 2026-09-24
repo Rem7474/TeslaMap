@@ -28,19 +28,19 @@
       <span class="brand-badge" data-i18n="admin">ADMIN</span>
     </a>
 
-    <div style="display: flex; align-items: center; gap: 12px;">
-      <div class="m3-chip m3-chip-success">
+    <div class="navbar-actions">
+      <div class="m3-chip m3-chip-success navbar-chip">
         <span class="pulse-dot"></span>
-        <span data-i18n="mqtt_connected">MQTT Connecté</span>
+        <span class="navbar-chip-text" data-i18n="mqtt_connected">MQTT Connecté</span>
       </div>
 
       <!-- Language Selector -->
-      <div style="display: flex; gap: 4px; background: var(--md-sys-color-surface-container-high); padding: 2px; border-radius: var(--md-shape-sm); border: 1px solid var(--md-sys-color-outline-variant);">
+      <div class="lang-selector">
         <button type="button" class="lang-toggle-btn m3-button m3-button-text" data-lang="fr" onclick="I18n.setLang('fr')" style="height: 28px; padding: 0 8px; font-size: 11px; font-weight: 700; border-radius: var(--md-shape-xs);">FR</button>
         <button type="button" class="lang-toggle-btn m3-button m3-button-text" data-lang="en" onclick="I18n.setLang('en')" style="height: 28px; padding: 0 8px; font-size: 11px; font-weight: 700; border-radius: var(--md-shape-xs);">EN</button>
       </div>
 
-      <button class="m3-button m3-button-text" onclick="TeslaAdmin.logout()" data-i18n="logout">
+      <button class="m3-button m3-button-text navbar-logout-btn" onclick="TeslaAdmin.logout()" data-i18n="logout">
         Déconnexion
       </button>
     </div>
