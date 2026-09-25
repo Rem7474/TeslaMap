@@ -101,9 +101,9 @@ html, body {
   .telemetry-sheet {
     top: 24px;
     left: 24px;
-    width: 380px;
+    width: 400px;
     border-radius: var(--md-shape-xl);
-    padding: 24px;
+    padding: 20px;
   }
   .sheet-handle {
     display: none;
@@ -178,9 +178,9 @@ html, body {
 /* Metric Display Cards */
 .metric-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
-  gap: 10px;
-  margin: 16px 0;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: 8px;
+  margin: 14px 0;
   text-align: center;
 }
 
@@ -188,25 +188,34 @@ html, body {
   background: var(--md-sys-color-surface-container-high);
   border: 1px solid var(--md-sys-color-outline-variant);
   border-radius: var(--md-shape-md);
-  padding: 12px 8px;
+  padding: 10px 4px;
+  min-width: 0;
+  overflow: hidden;
   transition: all 0.2s ease;
 }
 
 .metric-value {
-  font-size: 20px;
-  line-height: 24px;
+  font-size: 16px;
+  line-height: 22px;
   font-weight: 600;
   letter-spacing: -0.3px;
   color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
 }
 
 .metric-label {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
   text-transform: uppercase;
   color: var(--md-sys-color-on-surface-variant);
-  margin-top: 4px;
-  letter-spacing: 0.5px;
+  margin-top: 3px;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Navigation Re-center Button (Material 3 Extended FAB) */

@@ -411,6 +411,12 @@
             updateSafeZones(data.zones);
           }
           const st = data.status;
+          const minsToArrival = (st.route && st.route.minutes_to_arrival != null) ? Math.round(st.route.minutes_to_arrival) : 0;
+          let adminEta = '';
+          if (minsToArrival > 0) {
+            const arrDate = new Date(Date.now() + minsToArrival * 60000);
+            adminEta = String(arrDate.getHours()).padStart(2, '0') + ':' + String(arrDate.getMinutes()).padStart(2, '0');
+          }
           data = {
             state: st.state,
             latitude: st.latitude,
@@ -422,8 +428,9 @@
             teslamate_geofence: st.teslamate_geofence || '',
             has_active_route: st.has_active_route,
             destination: (st.route && st.route.destination) || '',
-            distance_left_km: (st.route && st.route.distance_to_arrival_km) || 0,
-            minutes_left: (st.route && Math.round(st.route.minutes_to_arrival)) || 0,
+            eta: adminEta,
+            distance_left_km: (st.route && st.route.distance_to_arrival_km != null) ? Math.round(st.route.distance_to_arrival_km * 10) / 10 : 0,
+            minutes_left: minsToArrival,
             progress_pct: (st.route && st.route.initial_distance_km > 0) ? Math.min(100, Math.max(0, Math.round(((st.route.initial_distance_km - st.route.distance_to_arrival_km) / st.route.initial_distance_km) * 100))) : 0,
             route_coordinates: (st.route && st.route.coordinates) || [],
             traveled_coordinates: st.traveled_coordinates || []
@@ -574,9 +581,41 @@
     // 4. Active Route & Progress
     if (data.has_active_route && data.destination) {
       if (elDestTitle) elDestTitle.textContent = data.destination;
-      if (elEtaVal) elEtaVal.textContent = data.eta || '--:--';
-      if (elMinVal) elMinVal.textContent = data.minutes_left != null ? data.minutes_left + ' ' + I18n.t('min_unit') : '--';
-      if (elDistVal) elDistVal.textContent = data.distance_left_km != null ? data.distance_left_km + ' ' + I18n.t('km_unit') : '--';
+      // ETA
+      let etaStr = data.eta;
+      if ((!etaStr || etaStr === '--:--') && data.minutes_left != null && data.minutes_left > 0) {
+        const arrDate = new Date(Date.now() + Math.round(data.minutes_left) * 60000);
+        const hh = String(arrDate.getHours()).padStart(2, '0');
+        const mm = String(arrDate.getMinutes()).padStart(2, '0');
+        etaStr = `${hh}:${mm}`;
+      }
+      if (elEtaVal) elEtaVal.textContent = etaStr || '--:--';
+
+      // Remaining Time
+      if (elMinVal) {
+        if (data.minutes_left != null && !isNaN(data.minutes_left) && data.minutes_left > 0) {
+          const mins = Math.round(data.minutes_left);
+          if (mins >= 60) {
+            const h = Math.floor(mins / 60);
+            const m = mins % 60;
+            elMinVal.textContent = `${h}h${m < 10 ? '0' : ''}${m}`;
+          } else {
+            elMinVal.textContent = mins + ' ' + I18n.t('min_unit');
+          }
+        } else {
+          elMinVal.textContent = '--';
+        }
+      }
+
+      // Distance Left
+      if (elDistVal) {
+        if (data.distance_left_km != null && !isNaN(data.distance_left_km)) {
+          const distNum = Number(data.distance_left_km);
+          elDistVal.textContent = distNum.toFixed(1) + ' ' + I18n.t('km_unit');
+        } else {
+          elDistVal.textContent = '--';
+        }
+      }
 
       const pct = data.progress_pct != null ? data.progress_pct : 0;
       if (elProgressPct) elProgressPct.textContent = pct + '%';

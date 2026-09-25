@@ -467,6 +467,8 @@ func (sm *StateManager) UpdateState(vehicleState string) {
 
 func (sm *StateManager) UpdateActiveRoute(destination string, lat, lon, minutes, distance, energy float64) {
 	sm.mu.Lock()
+	distance = math.Round(distance*10) / 10
+	minutes = math.Round(minutes*10) / 10
 	if destination == "" && lat == 0 && lon == 0 {
 		if sm.state.HasActiveRoute && sm.state.Route != nil {
 			sm.lastDestination = &lastDestinationInfo{
