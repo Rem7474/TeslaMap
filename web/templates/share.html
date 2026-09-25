@@ -14,8 +14,8 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
   
   <!-- TeslaMap Material 3 Styles -->
-  <link rel="stylesheet" href="/static/css/material3.css">
-  <link rel="stylesheet" href="/static/css/map.css">
+  <link rel="stylesheet" href="/static/css/material3.css?v=1.0.39">
+  <link rel="stylesheet" href="/static/css/map.css?v=1.0.39">
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(function(regs) {
@@ -26,11 +26,13 @@
 </head>
 <body class="{{if .IsEmbed}}embed-mode{{end}}">
 
+  {{if not .IsEmbed}}
   <!-- Floating Language Switcher -->
   <button type="button" class="m3-chip" id="btn-lang-toggle" style="position: fixed; top: max(16px, env(safe-area-inset-top, 16px)); right: max(16px, env(safe-area-inset-right, 16px)); z-index: 2500; cursor: pointer; padding: 6px 14px; font-weight: 500; box-shadow: var(--md-sys-elevation-2); backdrop-filter: blur(12px); background: rgba(20,23,29,0.88); border: 1px solid var(--md-sys-color-outline-variant);" title="Switch Language">
     <span class="material-symbols-outlined" style="font-size: 18px; color: var(--md-sys-color-primary);">language</span>
     <span id="lang-indicator" style="font-weight: 600;">EN</span>
   </button>
+  {{end}}
 
   <!-- Fullscreen Map -->
   <div id="map"></div>
@@ -165,7 +167,7 @@
     window.TESLAMAP_MAX_ZOOM = {{.MaxZoom}};
     window.TESLAMAP_INITIAL_TELEMETRY = {{.InitialTelemetry}};
   </script>
-  <script src="/static/js/i18n.js"></script>
-  <script src="/static/js/live_map.js"></script>
+  <script src="/static/js/i18n.js?v=1.0.39"></script>
+  <script src="/static/js/live_map.js?v=1.0.39"></script>
 </body>
 </html>

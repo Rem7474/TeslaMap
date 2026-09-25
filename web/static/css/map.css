@@ -353,8 +353,11 @@ html, body {
 body.embed-mode .telemetry-sheet,
 body.embed-mode #btn-lang-toggle,
 body.embed-mode .leaflet-control-zoom,
+body.embed-mode .leaflet-top,
 body.embed-mode .recenter-bar-container,
-body.embed-mode .expired-card {
+body.embed-mode .expired-card,
+body.embed-mode .definitely-closed-card,
+body.embed-mode .pending-card {
   display: none !important;
 }
 
