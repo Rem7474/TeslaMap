@@ -33,35 +33,23 @@ async function main() {
     Cookie: `teslamap_session=${sessionCookie}`,
   };
 
-  // 2. Ensure a sample share link exists
+  // 2. Always create a fresh active share link for the documentation screenshots
   let token = '';
-  const linksRes = await fetch(`${BASE_URL}/api/admin/links`, { headers: authHeaders });
-  if (linksRes.ok) {
-    const rawLinks = await linksRes.json();
-    const links = Array.isArray(rawLinks) ? rawLinks : [];
-    const active = links.find((l) => l.is_active);
-    if (active) {
-      token = active.token;
-    }
-  }
-
-  if (!token) {
-    console.log('Creating sample share link...');
-    const createRes = await fetch(`${BASE_URL}/api/admin/links`, {
-      method: 'POST',
-      headers: authHeaders,
-      body: JSON.stringify({
-        label: 'Road Trip to Geneva',
-        duration_minutes: 240,
-        expire_on_arrival: true,
-        show_speed: true,
-        show_battery: true,
-      }),
-    });
-    if (createRes.ok) {
-      const newLink = await createRes.json();
-      token = newLink.token;
-    }
+  console.log('Creating fresh active share link for screenshots...');
+  const createRes = await fetch(`${BASE_URL}/api/admin/links`, {
+    method: 'POST',
+    headers: authHeaders,
+    body: JSON.stringify({
+      label: 'Live Trip to Fontainebleau',
+      duration_minutes: 240,
+      expire_on_arrival: false,
+      show_speed: true,
+      show_battery: true,
+    }),
+  });
+  if (createRes.ok) {
+    const newLink = await createRes.json();
+    token = newLink.token;
   }
 
   // 3. Ensure a sample safe zone exists

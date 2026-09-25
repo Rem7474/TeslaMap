@@ -118,7 +118,7 @@ jobs:
       - name: Build and start TeslaMap server in Simulation Mode
         run: |
           go build -o teslamap ./cmd/teslamap
-          SIMULATION_MODE=true ADMIN_PASSWORD=admin123 ./teslamap &
+          SIMULATION_MODE=true ADMIN_PASSWORD=admin123 MAP_PROVIDER=cartodb MAP_API_KEY=cb1_3wf7_1_16659ed9a2d8323100b00606 ./teslamap &
           for i in {1..30}; do
             if curl -s http://localhost:8080/login > /dev/null; then
               echo "TeslaMap server is ready on port 8080!"
