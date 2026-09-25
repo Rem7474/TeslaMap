@@ -287,7 +287,9 @@
       attributionControl: true
     }).setView([46.8, 2.5], 6);
 
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
+    if (!window.TESLAMAP_IS_EMBED && !document.body.classList.contains('embed-mode')) {
+      L.control.zoom({ position: 'bottomright' }).addTo(map);
+    }
 
     // Configured map tiles (Mapbox, MapTiler, Stadia or default CartoDB Dark Matter)
     const tileURL = window.TESLAMAP_TILE_URL || 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';

@@ -351,10 +351,10 @@ html, body {
 
 /* Embed mode inside Admin Dashboard Widget */
 body.embed-mode .telemetry-sheet,
-body.embed-mode #btn-lang-toggle {
+body.embed-mode #btn-lang-toggle,
+body.embed-mode .leaflet-control-zoom,
+body.embed-mode .recenter-bar-container,
+body.embed-mode .expired-card {
   display: none !important;
 }
 
-body.embed-mode .recenter-bar-container {
-  bottom: 20px !important;
-}
