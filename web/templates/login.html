@@ -52,7 +52,7 @@
     <form id="login-form">
       <div class="m3-field">
         <label for="password" data-i18n="password">Mot de passe</label>
-        <input type="password" id="password" class="m3-input" required autofocus placeholder="••••••••">
+        <input type="password" id="password" class="m3-input" required placeholder="••••••••">
       </div>
 
       <div id="login-error" style="display: none; color: var(--md-sys-color-error); font-size: 13px; margin-bottom: 16px;" data-i18n="login_error">
@@ -66,7 +66,7 @@
     </form>
   </div>
 
-  <script src="/static/js/i18n.js"></script>
+  <script src="/static/js/i18n.js?v=1.0.40"></script>
   <script>
     document.getElementById('login-form').addEventListener('submit', async function(e) {
       e.preventDefault();

@@ -595,7 +595,7 @@
 
       // Remaining Time
       if (elMinVal) {
-        if (data.minutes_left != null && !isNaN(data.minutes_left) && data.minutes_left > 0) {
+        if (data.minutes_left != null && !Number.isNaN(data.minutes_left) && data.minutes_left > 0) {
           const mins = Math.round(data.minutes_left);
           if (mins >= 60) {
             const h = Math.floor(mins / 60);
@@ -611,7 +611,7 @@
 
       // Distance Left
       if (elDistVal) {
-        if (data.distance_left_km != null && !isNaN(data.distance_left_km)) {
+        if (data.distance_left_km != null && !Number.isNaN(data.distance_left_km)) {
           const distNum = Number(data.distance_left_km);
           elDistVal.textContent = distNum.toFixed(1) + ' ' + I18n.t('km_unit');
         } else {

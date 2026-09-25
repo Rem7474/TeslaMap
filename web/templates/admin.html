@@ -7,8 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap">
-  <link rel="stylesheet" href="/static/css/material3.css?v=1.0.39">
-  <link rel="stylesheet" href="/static/css/admin.css?v=1.0.39">
+  <link rel="stylesheet" href="/static/css/material3.css?v=1.0.40">
+  <link rel="stylesheet" href="/static/css/admin.css?v=1.0.40">
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(function(regs) {
@@ -132,7 +132,7 @@
           </div>
         </div>
         <div class="teslamate-sync-banner-action">
-          <label class="m3-switch" data-i18n-title="teslamate_switch_tooltip" title="Activer ou désactiver les géofences TeslaMate">
+          <label class="m3-switch" for="switch-teslamate-geofences" aria-label="Activer ou désactiver les géofences TeslaMate" data-i18n-title="teslamate_switch_tooltip" title="Activer ou désactiver les géofences TeslaMate">
             <input type="checkbox" id="switch-teslamate-geofences" checked>
             <span class="m3-switch-slider"></span>
           </label>
@@ -176,9 +176,9 @@
 
       <!-- Option 1: Preset Durations -->
       <div id="section-duration" style="margin-bottom: 16px;">
-        <label style="display: block; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant); margin-bottom: 8px;" data-i18n="duration_validity">
+        <div style="font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant); margin-bottom: 8px;" data-i18n="duration_validity">
           Durée de validité (à partir de maintenant)
-        </label>
+        </div>
         <div class="preset-grid">
           <button type="button" class="preset-btn" data-mins="60" data-i18n="preset_1h">1 Heure</button>
           <button type="button" class="preset-btn active" data-mins="240" data-i18n="preset_4h">4 Heures</button>
@@ -206,7 +206,7 @@
           <div style="font-size: 14px; font-weight: 500;" data-i18n="opt_revoke_arrival">Révoquer à l'arrivée</div>
           <div style="font-size: 12px; color: var(--md-sys-color-on-surface-variant);" data-i18n="opt_revoke_arrival_sub">Expire à destination ou après 5 min stationné</div>
         </div>
-        <label class="m3-switch">
+        <label class="m3-switch" for="input-expire-arrival" aria-label="Révoquer à l'arrivée">
           <input type="checkbox" id="input-expire-arrival" checked>
           <span class="m3-switch-slider"></span>
         </label>
@@ -217,7 +217,7 @@
           <div style="font-size: 14px; font-weight: 500;" data-i18n="opt_show_speed">Afficher la vitesse réelle</div>
           <div style="font-size: 12px; color: var(--md-sys-color-on-surface-variant);" data-i18n="opt_show_speed_sub">Visible en km/h sur la carte</div>
         </div>
-        <label class="m3-switch">
+        <label class="m3-switch" for="input-show-speed" aria-label="Afficher la vitesse réelle">
           <input type="checkbox" id="input-show-speed" checked>
           <span class="m3-switch-slider"></span>
         </label>
@@ -228,7 +228,7 @@
           <div style="font-size: 14px; font-weight: 500;" data-i18n="opt_show_battery">Afficher le niveau de batterie</div>
           <div style="font-size: 12px; color: var(--md-sys-color-on-surface-variant);" data-i18n="opt_show_battery_sub">Pourcentage restant</div>
         </div>
-        <label class="m3-switch">
+        <label class="m3-switch" for="input-show-battery" aria-label="Afficher le niveau de batterie">
           <input type="checkbox" id="input-show-battery" checked>
           <span class="m3-switch-slider"></span>
         </label>
@@ -304,7 +304,7 @@
 
   <div id="toast" class="m3-toast"></div>
 
-  <script src="/static/js/i18n.js?v=1.0.39"></script>
-  <script src="/static/js/admin.js?v=1.0.39"></script>
+  <script src="/static/js/i18n.js?v=1.0.40"></script>
+  <script src="/static/js/admin.js?v=1.0.40"></script>
 </body>
 </html>

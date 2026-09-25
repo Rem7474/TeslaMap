@@ -387,7 +387,7 @@
     btn.addEventListener('click', function () {
       document.querySelectorAll('#section-duration .preset-btn').forEach(b => b.classList.remove('active'));
       this.classList.add('active');
-      selectedDuration = parseInt(this.getAttribute('data-mins'), 10);
+      selectedDuration = Number.parseInt(this.getAttribute('data-mins'), 10);
     });
   });
 
@@ -449,16 +449,16 @@
     btn.addEventListener('click', function () {
       document.querySelectorAll('.zone-radius-btn').forEach(b => b.classList.remove('active'));
       this.classList.add('active');
-      selectedZoneRadius = parseInt(this.getAttribute('data-radius'), 10);
+      selectedZoneRadius = Number.parseInt(this.getAttribute('data-radius'), 10);
       if (inputZoneRadius) inputZoneRadius.value = selectedZoneRadius;
     });
   });
 
   if (inputZoneRadius) {
     inputZoneRadius.addEventListener('input', function () {
-      selectedZoneRadius = parseInt(this.value, 10) || 400;
+      selectedZoneRadius = Number.parseInt(this.value, 10) || 400;
       document.querySelectorAll('.zone-radius-btn').forEach(b => {
-        b.classList.toggle('active', parseInt(b.getAttribute('data-radius'), 10) === selectedZoneRadius);
+        b.classList.toggle('active', Number.parseInt(b.getAttribute('data-radius'), 10) === selectedZoneRadius);
       });
     });
   }
@@ -508,15 +508,15 @@
   if (elSubmitZoneModalBtn) {
     elSubmitZoneModalBtn.addEventListener('click', async () => {
       const name = inputZoneName ? inputZoneName.value.trim() : '';
-      const lat = inputZoneLat ? parseFloat(inputZoneLat.value) : NaN;
-      const lon = inputZoneLon ? parseFloat(inputZoneLon.value) : NaN;
-      const radius = inputZoneRadius ? (parseFloat(inputZoneRadius.value) || selectedZoneRadius) : selectedZoneRadius;
+      const lat = inputZoneLat ? Number.parseFloat(inputZoneLat.value) : Number.NaN;
+      const lon = inputZoneLon ? Number.parseFloat(inputZoneLon.value) : Number.NaN;
+      const radius = inputZoneRadius ? (Number.parseFloat(inputZoneRadius.value) || selectedZoneRadius) : selectedZoneRadius;
 
-      if (!name || isNaN(lat) || isNaN(lon)) {
+      if (!name || Number.isNaN(lat) || Number.isNaN(lon)) {
         showToast(I18n.t('err_zone_fields'));
         return;
       }
-      if (isNaN(radius) || radius <= 0) {
+      if (Number.isNaN(radius) || radius <= 0) {
         showToast(I18n.t('err_zone_gps'));
         return;
       }
