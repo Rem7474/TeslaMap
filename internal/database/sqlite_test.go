@@ -117,4 +117,24 @@ func TestSQLiteCRUD(t *testing.T) {
 		t.Errorf("expected at least one active link (activeLink)")
 	}
 	_ = activeLink
+
+	// 8. Settings
+	defaultBool := db.GetBoolSetting("teslamate_geofence_enabled", true)
+	if !defaultBool {
+		t.Errorf("expected default setting to be true")
+	}
+
+	if err := db.SetBoolSetting("teslamate_geofence_enabled", false); err != nil {
+		t.Fatalf("failed to set bool setting: %v", err)
+	}
+	if db.GetBoolSetting("teslamate_geofence_enabled", true) {
+		t.Errorf("expected setting to be false after updating")
+	}
+
+	if err := db.SetBoolSetting("teslamate_geofence_enabled", true); err != nil {
+		t.Fatalf("failed to set bool setting: %v", err)
+	}
+	if !db.GetBoolSetting("teslamate_geofence_enabled", false) {
+		t.Errorf("expected setting to be true after updating")
+	}
 }

@@ -32,9 +32,10 @@ type VehicleState struct {
 	Longitude         float64   `json:"longitude"`
 	Heading           float64   `json:"heading"`
 	Speed             float64   `json:"speed"` // km/h
-	BatteryLevel      float64   `json:"battery_level"`
-	TeslaMateGeofence string    `json:"teslamate_geofence,omitempty"`
-	UpdatedAt         time.Time `json:"updated_at"`
+	BatteryLevel             float64   `json:"battery_level"`
+	TeslaMateGeofence        string    `json:"teslamate_geofence,omitempty"`
+	TeslaMateGeofenceEnabled bool      `json:"teslamate_geofence_enabled"`
+	UpdatedAt                time.Time `json:"updated_at"`
 
 	HasActiveRoute      bool         `json:"has_active_route"`
 	Route               *ActiveRoute `json:"route,omitempty"`
@@ -93,21 +94,28 @@ type StateManager struct {
 	parkGraceTimer    *time.Timer
 	parkGraceTimerMu  sync.Mutex
 	parkGraceDuration time.Duration
-	traveledPoints      []TraveledPoint
-	lastRouteCalc       time.Time
-	routeRecalcInterval time.Duration
+	traveledPoints           []TraveledPoint
+	lastRouteCalc            time.Time
+	routeRecalcInterval      time.Duration
+	teslaMateGeofenceEnabled bool
 }
 
 func NewStateManager(r routing.Router, db *database.DB) *StateManager {
+	tmEnabled := true
+	if db != nil {
+		tmEnabled = db.GetBoolSetting("teslamate_geofence_enabled", true)
+	}
 	return &StateManager{
-		router:              r,
-		db:                  db,
-		subscribers:         make(map[chan struct{}]struct{}),
-		parkGraceDuration:   5 * time.Minute,
-		routeRecalcInterval: 3 * time.Minute,
+		router:                   r,
+		db:                       db,
+		subscribers:              make(map[chan struct{}]struct{}),
+		parkGraceDuration:        5 * time.Minute,
+		routeRecalcInterval:      3 * time.Minute,
+		teslaMateGeofenceEnabled: tmEnabled,
 		state: VehicleState{
-			State:     "parked",
-			UpdatedAt: time.Now(),
+			State:                    "parked",
+			TeslaMateGeofenceEnabled: tmEnabled,
+			UpdatedAt:                time.Now(),
 		},
 	}
 }
@@ -255,6 +263,7 @@ func (sm *StateManager) GetRawState() VehicleState {
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
 	st := sm.state
+	st.TeslaMateGeofenceEnabled = sm.teslaMateGeofenceEnabled
 	if len(sm.traveledPoints) > 0 {
 		coords := make([][]float64, 0, len(sm.traveledPoints))
 		for _, pt := range sm.traveledPoints {
@@ -263,6 +272,24 @@ func (sm *StateManager) GetRawState() VehicleState {
 		st.TraveledCoordinates = coords
 	}
 	return st
+}
+
+func (sm *StateManager) IsTeslaMateGeofenceEnabled() bool {
+	sm.mu.RLock()
+	defer sm.mu.RUnlock()
+	return sm.teslaMateGeofenceEnabled
+}
+
+func (sm *StateManager) SetTeslaMateGeofenceEnabled(enabled bool) {
+	sm.mu.Lock()
+	sm.teslaMateGeofenceEnabled = enabled
+	sm.state.TeslaMateGeofenceEnabled = enabled
+	sm.state.UpdatedAt = time.Now()
+	if sm.db != nil {
+		_ = sm.db.SetBoolSetting("teslamate_geofence_enabled", enabled)
+	}
+	sm.mu.Unlock()
+	sm.notifySubscribers()
 }
 
 func isChargingStop(destination string) bool {
@@ -306,7 +333,7 @@ func (sm *StateManager) UpdateLocation(lat, lon, heading, speed float64) {
 			safeZones, _ = sm.db.ListSafeZones()
 		}
 		geoRes := geofence.CheckSafeZones(lat, lon, safeZones)
-		inSafe := geoRes.IsInsideSafeZone || sm.state.TeslaMateGeofence != ""
+		inSafe := geoRes.IsInsideSafeZone || (sm.state.TeslaMateGeofence != "" && sm.teslaMateGeofenceEnabled)
 
 		if !inSafe {
 			n := len(sm.traveledPoints)
@@ -592,7 +619,7 @@ func (sm *StateManager) GetPublicTelemetry(link *database.SharedLink) PublicTele
 
 	geoResult := geofence.CheckSafeZones(st.Latitude, st.Longitude, safeZones)
 
-	inTeslaMateGeofence := st.TeslaMateGeofence != ""
+	inTeslaMateGeofence := st.TeslaMateGeofence != "" && sm.teslaMateGeofenceEnabled
 	inSafeZone := geoResult.IsInsideSafeZone || inTeslaMateGeofence
 	now := time.Now()
 	res := PublicTelemetry{

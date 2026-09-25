@@ -99,9 +99,13 @@
       link_created: "Lien de partage créé et copié !",
 
       // TeslaMate Geofences Sync & Safe Zone Dialog
-      teslamate_sync_title: "Synchronisation TeslaMate active :",
+      teslamate_sync_title: "Géofences automatiques TeslaMate :",
       teslamate_sync_desc: "Toutes vos géofences créées dans TeslaMate (Domicile, Travail, etc.) sont automatiquement reconnues et protégées en direct via MQTT, sans aucune saisie manuelle.",
       teslamate_in_geofence: "Véhicule actuellement dans la géofence TeslaMate : {zone} (Position masquée)",
+      teslamate_in_geofence_unmasked: "Véhicule dans la géofence TeslaMate : {zone} (Protection désactivée)",
+      teslamate_switch_tooltip: "Activer ou désactiver la protection automatique des géofences TeslaMate",
+      teslamate_geofences_enabled_toast: "Géofences TeslaMate activées",
+      teslamate_geofences_disabled_toast: "Géofences TeslaMate désactivées",
       create_zone_title: "Ajouter une zone protégée",
       create_zone_subtitle: "Masque automatiquement la position exacte et la vitesse lorsque la voiture est dans cette zone.",
       zone_name_label: "Nom de la zone",
@@ -225,9 +229,13 @@
       link_created: "Share link created and copied!",
 
       // TeslaMate Geofences Sync & Safe Zone Dialog
-      teslamate_sync_title: "TeslaMate synchronization active:",
+      teslamate_sync_title: "TeslaMate automatic geofences:",
       teslamate_sync_desc: "All geofences configured in TeslaMate (Home, Work, etc.) are automatically detected and protected in real time via MQTT, without any manual entry.",
       teslamate_in_geofence: "Vehicle currently inside TeslaMate geofence: {zone} (Position masked)",
+      teslamate_in_geofence_unmasked: "Vehicle inside TeslaMate geofence: {zone} (Protection disabled)",
+      teslamate_switch_tooltip: "Enable or disable automatic protection for TeslaMate geofences",
+      teslamate_geofences_enabled_toast: "TeslaMate geofences enabled",
+      teslamate_geofences_disabled_toast: "TeslaMate geofences disabled",
       create_zone_title: "Add protected zone",
       create_zone_subtitle: "Automatically hides exact position and speed whenever the vehicle is inside this area.",
       zone_name_label: "Zone name",

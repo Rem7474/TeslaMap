@@ -122,12 +122,20 @@
       <!-- Live Active TeslaMate Geofence Alert (Standalone) -->
       <div id="teslamate-active-chip" class="active-geofence-alert" style="display: none;"></div>
 
-      <!-- TeslaMate Geofences Sync Notice -->
+      <!-- TeslaMate Geofences Sync Notice with Toggle Switch -->
       <div class="teslamate-sync-banner">
-        <span class="material-symbols-outlined" style="color: var(--md-sys-color-primary); flex-shrink: 0; font-size: 20px;">cloud_sync</span>
-        <div style="font-size: 13px; color: var(--md-sys-color-on-surface-variant); line-height: 1.5;">
-          <strong style="color: var(--md-sys-color-on-surface);" data-i18n="teslamate_sync_title">Synchronisation TeslaMate active :</strong>
-          <span data-i18n="teslamate_sync_desc">Toutes vos géofences créées dans TeslaMate (Domicile, Travail, etc.) sont automatiquement reconnues et protégées en direct via MQTT, sans aucune saisie manuelle.</span>
+        <div class="teslamate-sync-banner-content">
+          <span class="material-symbols-outlined" style="color: var(--md-sys-color-primary); flex-shrink: 0; font-size: 24px;">cloud_sync</span>
+          <div style="font-size: 13px; color: var(--md-sys-color-on-surface-variant); line-height: 1.5;">
+            <strong style="color: var(--md-sys-color-on-surface);" data-i18n="teslamate_sync_title">Géofences automatiques TeslaMate :</strong>
+            <span data-i18n="teslamate_sync_desc">Toutes vos géofences créées dans TeslaMate (Domicile, Travail, etc.) sont automatiquement reconnues et protégées en direct via MQTT, sans aucune saisie manuelle.</span>
+          </div>
+        </div>
+        <div class="teslamate-sync-banner-action">
+          <label class="m3-switch" data-i18n-title="teslamate_switch_tooltip" title="Activer ou désactiver les géofences TeslaMate">
+            <input type="checkbox" id="switch-teslamate-geofences" checked>
+            <span class="m3-switch-slider"></span>
+          </label>
         </div>
       </div>
 

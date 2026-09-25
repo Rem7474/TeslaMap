@@ -318,15 +318,34 @@
   box-shadow: var(--md-sys-elevation-1);
 }
 
+.active-geofence-alert.disabled-geofence-alert {
+  background: var(--md-sys-color-surface-container-high);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
 .teslamate-sync-banner {
   display: flex;
-  align-items: flex-start;
-  gap: 14px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
   padding: 14px 18px;
   background: var(--md-sys-color-surface-container);
   border: 1px solid var(--md-sys-color-outline-variant);
   border-radius: var(--md-shape-md);
   margin-bottom: 16px;
+}
+
+.teslamate-sync-banner-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.teslamate-sync-banner-action {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
 }
 
 /* Safe Zone chips */
@@ -465,5 +484,15 @@
   .m3-switch-container > div {
     flex: 1;
     min-width: 0;
+  }
+
+  .teslamate-sync-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .teslamate-sync-banner-action {
+    align-self: flex-end;
   }
 }

@@ -36,6 +36,7 @@
   const elZonesContainer = document.getElementById('zones-container');
   const elToast = document.getElementById('toast');
   const elTmActiveChip = document.getElementById('teslamate-active-chip');
+  const elSwitchTmGeofences = document.getElementById('switch-teslamate-geofences');
 
   // Telemetry DOM elements
   const elCarState = document.getElementById('stat-state');
@@ -144,20 +145,60 @@
       }
     }
 
+    // Synchronize toggle switch state
+    if (elSwitchTmGeofences && data.teslamate_geofence_enabled !== undefined) {
+      if (document.activeElement !== elSwitchTmGeofences) {
+        elSwitchTmGeofences.checked = !!data.teslamate_geofence_enabled;
+      }
+    }
+
     // TeslaMate geofence active alert banner
     if (elTmActiveChip) {
       if (data.teslamate_geofence) {
         elTmActiveChip.style.display = 'flex';
-        elTmActiveChip.innerHTML = `
-          <span class="pulse-dot"></span>
-          <span class="material-symbols-outlined" style="color: var(--md-sys-color-success); font-size: 20px;">verified_user</span>
-          <span>${I18n.t('teslamate_in_geofence', { zone: escapeHtml(data.teslamate_geofence) })}</span>
-        `;
+        const isEnabled = data.teslamate_geofence_enabled !== false;
+        if (isEnabled) {
+          elTmActiveChip.className = "active-geofence-alert";
+          elTmActiveChip.innerHTML = `
+            <span class="pulse-dot"></span>
+            <span class="material-symbols-outlined" style="color: var(--md-sys-color-success); font-size: 20px;">verified_user</span>
+            <span>${I18n.t('teslamate_in_geofence', { zone: escapeHtml(data.teslamate_geofence) })}</span>
+          `;
+        } else {
+          elTmActiveChip.className = "active-geofence-alert disabled-geofence-alert";
+          elTmActiveChip.innerHTML = `
+            <span class="material-symbols-outlined" style="color: var(--md-sys-color-outline); font-size: 20px;">shield_with_heart</span>
+            <span>${I18n.t('teslamate_in_geofence_unmasked', { zone: escapeHtml(data.teslamate_geofence) })}</span>
+          `;
+        }
       } else {
         elTmActiveChip.style.display = 'none';
         elTmActiveChip.innerHTML = '';
       }
     }
+  }
+
+  if (elSwitchTmGeofences) {
+    elSwitchTmGeofences.addEventListener('change', async function () {
+      const enabled = elSwitchTmGeofences.checked;
+      try {
+        const res = await fetch('/api/admin/settings/teslamate-geofence', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: enabled })
+        });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        showToast(enabled ? I18n.t('teslamate_geofences_enabled_toast') : I18n.t('teslamate_geofences_disabled_toast'));
+        if (lastStatus) {
+          lastStatus.teslamate_geofence_enabled = enabled;
+          renderStatus(lastStatus);
+        }
+      } catch (err) {
+        console.error("Failed to toggle TeslaMate geofence setting", err);
+        elSwitchTmGeofences.checked = !enabled;
+        showToast("Erreur lors de la mise à jour");
+      }
+    });
   }
 
   async function loadLinks() {

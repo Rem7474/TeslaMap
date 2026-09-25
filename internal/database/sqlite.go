@@ -122,6 +122,11 @@ func (db *DB) migrate() error {
 		radius_meters REAL NOT NULL,
 		created_at DATETIME NOT NULL
 	);
+
+	CREATE TABLE IF NOT EXISTS settings (
+		key TEXT PRIMARY KEY,
+		value TEXT NOT NULL
+	);
 	`
 	if _, err := db.conn.Exec(schema); err != nil {
 		return err
@@ -348,4 +353,41 @@ func (db *DB) CreateSafeZone(name string, lat, lon, radius float64) (*SafeZone, 
 func (db *DB) DeleteSafeZone(id int64) error {
 	_, err := db.conn.Exec("DELETE FROM safe_zones WHERE id = ?", id)
 	return err
+}
+
+func (db *DB) GetSetting(key, defaultValue string) (string, error) {
+	var val string
+	err := db.conn.QueryRow("SELECT value FROM settings WHERE key = ?", key).Scan(&val)
+	if err == sql.ErrNoRows {
+		return defaultValue, nil
+	}
+	if err != nil {
+		return defaultValue, err
+	}
+	return val, nil
+}
+
+func (db *DB) SetSetting(key, value string) error {
+	_, err := db.conn.Exec("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", key, value)
+	return err
+}
+
+func (db *DB) GetBoolSetting(key string, defaultValue bool) bool {
+	defaultStr := "0"
+	if defaultValue {
+		defaultStr = "1"
+	}
+	val, err := db.GetSetting(key, defaultStr)
+	if err != nil {
+		return defaultValue
+	}
+	return val == "1" || val == "true"
+}
+
+func (db *DB) SetBoolSetting(key string, value bool) error {
+	valStr := "0"
+	if value {
+		valStr = "1"
+	}
+	return db.SetSetting(key, valStr)
 }

@@ -234,3 +234,45 @@ func TestAdminCreateLinkAPI(t *testing.T) {
 		t.Errorf("expected starts_at and expires_at to be populated in slot response")
 	}
 }
+
+func TestAdminToggleTeslaMateGeofenceAPI(t *testing.T) {
+	srv, _, sm := setupTestServer(t)
+
+	// Login first to get cookie
+	loginReq := httptest.NewRequest("POST", "/api/auth/login", strings.NewReader(`{"password":"testpassword"}`))
+	loginW := httptest.NewRecorder()
+	srv.mux.ServeHTTP(loginW, loginReq)
+	cookie := loginW.Result().Header.Get("Set-Cookie")
+
+	if !sm.IsTeslaMateGeofenceEnabled() {
+		t.Errorf("expected default setting to be enabled")
+	}
+
+	// 1. Disable TeslaMate geofences
+	req := httptest.NewRequest("POST", "/api/admin/settings/teslamate-geofence", strings.NewReader(`{"enabled":false}`))
+	req.Header.Set("Cookie", cookie)
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	srv.mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK, got %d: %s", w.Code, w.Body.String())
+	}
+	if sm.IsTeslaMateGeofenceEnabled() {
+		t.Errorf("expected teslaMateGeofenceEnabled to be false after toggle")
+	}
+
+	// 2. Re-enable TeslaMate geofences
+	req = httptest.NewRequest("POST", "/api/admin/settings/teslamate-geofence", strings.NewReader(`{"enabled":true}`))
+	req.Header.Set("Cookie", cookie)
+	req.Header.Set("Content-Type", "application/json")
+	w = httptest.NewRecorder()
+	srv.mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK, got %d: %s", w.Code, w.Body.String())
+	}
+	if !sm.IsTeslaMateGeofenceEnabled() {
+		t.Errorf("expected teslaMateGeofenceEnabled to be true after toggle")
+	}
+}

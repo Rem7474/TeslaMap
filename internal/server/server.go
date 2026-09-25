@@ -82,6 +82,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /api/admin/zones", s.requireAuth(s.handleAdminZonesListAPI))
 	s.mux.HandleFunc("POST /api/admin/zones", s.requireAuth(s.handleAdminZonesCreateAPI))
 	s.mux.HandleFunc("DELETE /api/admin/zones/{id}", s.requireAuth(s.handleAdminZonesDeleteAPI))
+	s.mux.HandleFunc("POST /api/admin/settings/teslamate-geofence", s.requireAuth(s.handleAdminToggleTeslaMateGeofenceAPI))
 
 	// Root redirect
 	s.mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {

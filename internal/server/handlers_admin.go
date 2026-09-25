@@ -321,3 +321,19 @@ func (s *Server) handleAdminZonesDeleteAPI(w http.ResponseWriter, r *http.Reques
 
 	jsonResponse(w, http.StatusOK, map[string]bool{"success": true})
 }
+
+func (s *Server) handleAdminToggleTeslaMateGeofenceAPI(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Enabled bool `json:"enabled"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+		return
+	}
+
+	s.stateManager.SetTeslaMateGeofenceEnabled(req.Enabled)
+	jsonResponse(w, http.StatusOK, map[string]interface{}{
+		"success":                    true,
+		"teslamate_geofence_enabled": req.Enabled,
+	})
+}
