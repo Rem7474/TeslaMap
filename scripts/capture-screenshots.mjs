@@ -37,7 +37,8 @@ async function main() {
   let token = '';
   const linksRes = await fetch(`${BASE_URL}/api/admin/links`, { headers: authHeaders });
   if (linksRes.ok) {
-    const links = await linksRes.json();
+    const rawLinks = await linksRes.json();
+    const links = Array.isArray(rawLinks) ? rawLinks : [];
     const active = links.find((l) => l.is_active);
     if (active) {
       token = active.token;
@@ -66,8 +67,9 @@ async function main() {
   // 3. Ensure a sample safe zone exists
   const zonesRes = await fetch(`${BASE_URL}/api/admin/zones`, { headers: authHeaders });
   if (zonesRes.ok) {
-    const zones = await zonesRes.json();
-    if (!zones || zones.length === 0) {
+    const rawZones = await zonesRes.json();
+    const zones = Array.isArray(rawZones) ? rawZones : [];
+    if (zones.length === 0) {
       console.log('Creating sample safe zone...');
       await fetch(`${BASE_URL}/api/admin/zones`, {
         method: 'POST',
