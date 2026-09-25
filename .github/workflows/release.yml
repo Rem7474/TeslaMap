@@ -88,3 +88,57 @@ jobs:
         with:
           files: dist/*
           generate_release_notes: true
+
+  screenshots:
+    name: Capture & Update Documentation Screenshots
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies & Playwright Chromium
+        run: |
+          npm ci || npm install
+          npx playwright install --with-deps chromium
+
+      - name: Build and start TeslaMap server in Simulation Mode
+        run: |
+          go build -o teslamap ./cmd/teslamap
+          SIMULATION_MODE=true ADMIN_PASSWORD=admin123 ./teslamap &
+          for i in {1..30}; do
+            if curl -s http://localhost:8080/login > /dev/null; then
+              echo "TeslaMap server is ready on port 8080!"
+              break
+            fi
+            sleep 1
+          done
+
+      - name: Capture fresh screenshots
+        run: |
+          node scripts/capture-screenshots.mjs
+
+      - name: Commit and push updated screenshots to main
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/screenshots/ README.md
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(docs): auto-update release screenshots in README [skip ci]"
+            git push origin main
+          else
+            echo "Screenshots are up to date, nothing to commit."
+          fi

@@ -11,6 +11,22 @@ Built with a sleek **Material Design 3 (M3)** dark interface optimized for smart
 
 ---
 
+## 📸 Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/tracking-mobile.png" alt="Live Tracking Mobile View" width="28%" />
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="docs/screenshots/admin-desktop.png" alt="TeslaMap Admin Dashboard" width="65%" />
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/tracking-desktop.png" alt="Live Tracking Desktop View" width="65%" />
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="docs/screenshots/admin-mobile.png" alt="Mobile Admin Dashboard" width="28%" />
+</p>
+
+---
+
 ## ✨ Features
 
 - **Battery-efficient real-time telemetry**: Passive MQTT ingestion from TeslaMate's Mosquitto broker without waking up or draining the vehicle's battery.
